@@ -15,6 +15,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useConversationStore } from "@/stores/conversation-store";
+import { useModelStore } from "@/stores/model-store";
 import { useState } from "react";
 
 export default function SettingsScreen() {
@@ -26,8 +27,19 @@ export default function SettingsScreen() {
   const dangerColor = useThemeColor({}, "danger");
   const tintColor = useThemeColor({}, "tint");
   const successColor = useThemeColor({}, "success");
+  const warningColor = useThemeColor({}, "warning");
 
-  const { clearAllConversations, conversations } = useConversationStore();
+  const conversations = useConversationStore(state => state.conversations);
+  const clearAllConversations = useConversationStore(state => state.clearAllConversations);
+
+  // Subscribe to reactive state values for proper re-renders
+  const models = useModelStore(state => state.models);
+  const activeModelId = useModelStore(state => state.activeModelId);
+  const modelStates = useModelStore(state => state.modelStates);
+
+  // Derive computed values
+  const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
+  const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
 
   // Local settings state (will be persisted later)
   const [hapticEnabled, setHapticEnabled] = useState(true);
@@ -57,6 +69,10 @@ export default function SettingsScreen() {
     Linking.openURL("https://github.com");
   };
 
+  const handleModelPress = () => {
+    router.push("/model-manager" as const as "/settings");
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: borderColor }]}>
@@ -70,50 +86,38 @@ export default function SettingsScreen() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <ThemedText style={styles.sectionTitle}>Model</ThemedText>
         <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <TouchableOpacity style={styles.settingRow}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleModelPress}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingInfo}>
               <View style={[styles.iconContainer, { backgroundColor: tintColor + "20" }]}>
                 <Ionicons name="cube-outline" size={20} color={tintColor} />
               </View>
               <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Current Model</ThemedText>
-                <ThemedText style={styles.settingValue}>Mock Model v1.0</ThemedText>
+                <ThemedText style={styles.settingLabel}>
+                  {activeModel?.name ?? "No Model Selected"}
+                </ThemedText>
+                <ThemedText style={styles.settingValue}>
+                  {modelReady ? "Ready to use" : "Setup required"}
+                </ThemedText>
               </View>
             </View>
-            <View style={styles.statusBadge}>
-              <View style={[styles.statusDot, { backgroundColor: successColor }]} />
-              <ThemedText style={[styles.statusText, { color: successColor }]}>Active</ThemedText>
+            <View style={styles.settingRowRight}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: modelReady ? successColor : warningColor },
+                ]}
+              />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={iconColor}
+                style={{ opacity: 0.4 }}
+              />
             </View>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#8B5CF620" }]}>
-                <Ionicons name="cloud-download-outline" size={20} color="#8B5CF6" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Model Library</ThemedText>
-                <ThemedText style={styles.settingValue}>Browse & download models</ThemedText>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={iconColor} style={{ opacity: 0.4 }} />
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#F5920020" }]}>
-                <Ionicons name="folder-open-outline" size={20} color="#F59200" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Import GGUF</ThemedText>
-                <ThemedText style={styles.settingValue}>Load from device storage</ThemedText>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={iconColor} style={{ opacity: 0.4 }} />
           </TouchableOpacity>
         </View>
 
@@ -297,6 +301,10 @@ const styles = StyleSheet.create({
   },
   settingTextContainer: {
     flex: 1,
+  },
+  settingRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   settingLabel: {
     fontSize: 15,

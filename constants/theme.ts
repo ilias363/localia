@@ -1,19 +1,19 @@
 import { Platform } from "react-native";
 
 const tintColorLight = "#0a7ea4";
-const tintColorDark = "#fff";
+const tintColorDark = "#0a7ea4";
 
 export const Colors = {
   light: {
     text: "#11181C",
-    background: "#fff",
+    background: "#ffffff",
     tint: tintColorLight,
     icon: "#687076",
     tabIconDefault: "#687076",
     tabIconSelected: tintColorLight,
     inputBackground: "#f5f5f5",
     inputFieldBackground: "#ffffff",
-    placeholder: "#999",
+    placeholder: "#999999",
     border: "#e0e0e0",
     cardBackground: "#f5f5f5",
     userBubble: tintColorLight,
@@ -32,11 +32,11 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     inputBackground: "#1a1a1a",
     inputFieldBackground: "#2a2a2a",
-    placeholder: "#666",
-    border: "#333",
+    placeholder: "#666666",
+    border: "#333333",
     cardBackground: "#1a1a1a",
     userBubble: tintColorDark,
-    userBubbleText: "#000000",
+    userBubbleText: "#ffffff",
     assistantBubble: "#2a2a2a",
     danger: "#ff4444",
     success: "#4caf50",

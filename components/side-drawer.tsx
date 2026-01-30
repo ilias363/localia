@@ -15,7 +15,8 @@ import type { EdgeInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
-import { useConversationStore, type Conversation } from "@/stores/conversation-store";
+import { useConversationStore } from "@/stores/conversation-store";
+import type { Conversation } from "@/types";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.8;
 
@@ -35,8 +36,10 @@ export function SideDrawer({ visible, onClose, insets }: SideDrawerProps) {
   const cardBackground = useThemeColor({}, "cardBackground");
   const textColor = useThemeColor({}, "text");
 
-  const { conversations, activeConversationId, deleteConversation, setActiveConversation } =
-    useConversationStore();
+  const conversations = useConversationStore(state => state.conversations);
+  const activeConversationId = useConversationStore(state => state.activeConversationId);
+  const deleteConversation = useConversationStore(state => state.deleteConversation);
+  const setActiveConversation = useConversationStore(state => state.setActiveConversation);
 
   useEffect(() => {
     Animated.parallel([
@@ -79,9 +82,10 @@ export function SideDrawer({ visible, onClose, insets }: SideDrawerProps) {
     ]);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - timestamp;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) return "Today";

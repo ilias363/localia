@@ -1,6 +1,7 @@
-import { generateId, generateResponse, type Message } from "@/services/mock-llm";
+import { llmService } from "@/services/llm";
 import { useConversationStore } from "@/stores/conversation-store";
-import { useCallback, useRef, useState } from "react";
+import { useModelStore } from "@/stores/model-store";
+import { useRef, useState } from "react";
 
 export function useChat() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -8,50 +9,63 @@ export function useChat() {
   const abortRef = useRef(false);
   const streamingContentRef = useRef("");
 
-  const {
-    activeConversationId,
-    getActiveConversation,
-    addMessage,
-    updateMessage,
-    createConversation,
-  } = useConversationStore();
+  // Reactive conversation state
+  const conversations = useConversationStore(state => state.conversations);
+  const activeConversationId = useConversationStore(state => state.activeConversationId);
+  const addMessage = useConversationStore(state => state.addMessage);
+  const updateMessage = useConversationStore(state => state.updateMessage);
+  const createConversation = useConversationStore(state => state.createConversation);
 
-  const activeConversation = getActiveConversation();
+  // Reactive model state
+  const models = useModelStore(state => state.models);
+  const modelStates = useModelStore(state => state.modelStates);
+  const activeModelId = useModelStore(state => state.activeModelId);
+  const activeModelPath = useModelStore(state => state.activeModelPath);
+
+  // Derive values from reactive state
+  const activeConversation = activeConversationId
+    ? conversations.find(c => c.id === activeConversationId)
+    : null;
+  const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
+  const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
   const messages = activeConversation?.messages ?? [];
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (isGenerating) return;
+  const sendMessage = async (content: string) => {
+    if (isGenerating) return;
 
-      let conversationId = activeConversationId;
-      if (!conversationId) {
-        conversationId = createConversation();
-      }
+    // Check if model is ready
+    if (!modelReady || !activeModel || !activeModelPath) {
+      console.warn("Cannot send message: No model loaded");
+      return;
+    }
 
-      const userMessage: Message = {
-        id: generateId(),
-        role: "user",
-        content,
-        timestamp: new Date(),
-      };
+    let conversationId = activeConversationId;
+    if (!conversationId) {
+      const newConversation = createConversation();
+      conversationId = newConversation.id;
+    }
 
-      const assistantMessage: Message = {
-        id: generateId(),
-        role: "assistant",
-        content: "",
-        timestamp: new Date(),
-      };
+    // Add user message
+    const userMessage = addMessage(conversationId, {
+      role: "user",
+      content,
+    });
 
-      addMessage(conversationId, userMessage);
-      addMessage(conversationId, assistantMessage);
+    // Add empty assistant message for streaming
+    const assistantMessage = addMessage(conversationId, {
+      role: "assistant",
+      content: "",
+    });
 
-      setIsGenerating(true);
-      setStreamingMessageId(assistantMessage.id);
-      abortRef.current = false;
-      streamingContentRef.current = "";
+    setIsGenerating(true);
+    setStreamingMessageId(assistantMessage.id);
+    abortRef.current = false;
+    streamingContentRef.current = "";
 
-      try {
-        await generateResponse([...messages, userMessage], {
+    try {
+      await llmService.generateResponse(
+        [...messages, userMessage],
+        {
           onToken: token => {
             if (abortRef.current) return;
             streamingContentRef.current += token;
@@ -71,24 +85,27 @@ export function useChat() {
             setIsGenerating(false);
             setStreamingMessageId(null);
           },
-        });
-      } catch {
-        setIsGenerating(false);
-        setStreamingMessageId(null);
-      }
-    },
-    [messages, isGenerating, activeConversationId, addMessage, updateMessage, createConversation],
-  );
+        },
+        activeModel,
+      );
+    } catch {
+      setIsGenerating(false);
+      setStreamingMessageId(null);
+    }
+  };
 
-  const stopGeneration = useCallback(() => {
+  const stopGeneration = () => {
     abortRef.current = true;
+    llmService.stopGeneration();
     setIsGenerating(false);
     setStreamingMessageId(null);
-  }, []);
+  };
 
   return {
     messages,
     isGenerating,
+    isModelReady: modelReady,
+    activeModel,
     streamingMessageId,
     sendMessage,
     stopGeneration,

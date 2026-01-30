@@ -8,14 +8,22 @@ import { ChatHeader, ChatInput, EmptyState, MessageBubble } from "@/components/c
 import { SideDrawer } from "@/components/side-drawer";
 import { ThemedView } from "@/components/themed-view";
 import { useChat } from "@/hooks/use-chat";
-import type { Message } from "@/services/mock-llm";
 import { useConversationStore } from "@/stores/conversation-store";
+import type { Message } from "@/types";
 
 export default function ChatScreen() {
   const flatListRef = useRef<FlatList<Message>>(null);
   const insets = useSafeAreaInsets();
-  const { messages, isGenerating, streamingMessageId, sendMessage } = useChat();
-  const { setActiveConversation } = useConversationStore();
+  const {
+    messages,
+    isGenerating,
+    isModelReady,
+    activeModel,
+    streamingMessageId,
+    sendMessage,
+    stopGeneration,
+  } = useChat();
+  const setActiveConversation = useConversationStore(state => state.setActiveConversation);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   const handleMenuPress = () => {
@@ -35,8 +43,8 @@ export default function ChatScreen() {
       <StatusBar style="auto" />
       <View style={[styles.topSafeArea, { paddingTop: insets.top }]}>
         <ChatHeader
-          modelName="Mock Model v1.0"
-          isConnected={false}
+          modelName={activeModel?.name ?? "No Model"}
+          isConnected={isModelReady}
           onMenuPress={handleMenuPress}
           onNewChatPress={handleNewChatPress}
         />
@@ -44,7 +52,7 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView style={styles.chatContainer} behavior="padding">
         {messages.length === 0 ? (
-          <EmptyState />
+          <EmptyState modelLoaded={isModelReady} />
         ) : (
           <FlatList
             ref={flatListRef}
@@ -58,7 +66,14 @@ export default function ChatScreen() {
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
         )}
-        <ChatInput onSend={sendMessage} disabled={isGenerating} bottomInset={insets.bottom} />
+        <ChatInput
+          onSend={sendMessage}
+          onStop={stopGeneration}
+          disabled={isGenerating}
+          isGenerating={isGenerating}
+          modelLoaded={isModelReady}
+          bottomInset={insets.bottom}
+        />
       </KeyboardAvoidingView>
 
       <SideDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} insets={insets} />
