@@ -1,7 +1,17 @@
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import type { Message } from "@/types";
+import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
 interface MessageBubbleProps {
   message: Message;
@@ -15,6 +25,7 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const assistantBubbleColor = useThemeColor({}, "assistantBubble");
   const userTextColor = useThemeColor({}, "userBubbleText");
   const assistantTextColor = useThemeColor({}, "text");
+  const tintColor = useThemeColor({}, "tint");
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
@@ -25,14 +36,74 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
           { backgroundColor: isUser ? userBubbleColor : assistantBubbleColor },
         ]}
       >
-        <ThemedText
-          style={[styles.messageText, { color: isUser ? userTextColor : assistantTextColor }]}
-        >
-          {message.content}
-          {isStreaming && <ThemedText style={styles.cursor}>▊</ThemedText>}
-        </ThemedText>
+        {/* Show animated dots when streaming with no content */}
+        {isStreaming && message.content.length === 0 ? (
+          <StreamingDots color={tintColor} />
+        ) : (
+          <ThemedText
+            style={[styles.messageText, { color: isUser ? userTextColor : assistantTextColor }]}
+          >
+            {message.content}
+            {isStreaming && (
+              <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
+            )}
+          </ThemedText>
+        )}
       </View>
-      <ThemedText style={styles.timestamp}>{formatTime(message.timestamp)}</ThemedText>
+      <ThemedText style={styles.timestamp}>
+        {isStreaming ? "Generating..." : formatTime(message.timestamp)}
+      </ThemedText>
+    </View>
+  );
+}
+
+// Animated streaming dots component with wave effect
+function StreamingDots({ color }: { color: string }) {
+  const dot1Scale = useSharedValue(0.6);
+  const dot2Scale = useSharedValue(0.6);
+  const dot3Scale = useSharedValue(0.6);
+
+  useEffect(() => {
+    const duration = 350;
+
+    const animation = (delay: number) =>
+      withDelay(
+        delay,
+        withRepeat(
+          withSequence(
+            withTiming(1.2, { duration, easing: Easing.out(Easing.ease) }),
+            withTiming(0.6, { duration, easing: Easing.in(Easing.ease) }),
+          ),
+          -1,
+          false,
+        ),
+      );
+
+    dot1Scale.value = animation(0);
+    dot2Scale.value = animation(150);
+    dot3Scale.value = animation(300);
+  }, [dot1Scale, dot2Scale, dot3Scale]);
+
+  const dot1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot1Scale.value }],
+    opacity: 0.5 + dot1Scale.value * 0.4,
+  }));
+
+  const dot2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot2Scale.value }],
+    opacity: 0.5 + dot2Scale.value * 0.4,
+  }));
+
+  const dot3Style = useAnimatedStyle(() => ({
+    transform: [{ scale: dot3Scale.value }],
+    opacity: 0.5 + dot3Scale.value * 0.4,
+  }));
+
+  return (
+    <View style={styles.dotsContainer}>
+      <Animated.View style={[styles.dot, { backgroundColor: color }, dot1Style]} />
+      <Animated.View style={[styles.dot, { backgroundColor: color }, dot2Style]} />
+      <Animated.View style={[styles.dot, { backgroundColor: color }, dot3Style]} />
     </View>
   );
 }
@@ -69,12 +140,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   cursor: {
-    opacity: 0.7,
+    fontWeight: "300",
+    fontSize: 18,
   },
   timestamp: {
     fontSize: 11,
     opacity: 0.5,
     marginTop: 4,
     marginHorizontal: 4,
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });
