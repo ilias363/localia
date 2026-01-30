@@ -13,6 +13,7 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,6 +25,52 @@ import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { llmService } from "@/services/llm";
 import { useModelStore } from "@/stores/model-store";
+import type { ModelInfo } from "@/types";
+
+// Sort options
+type SortField = "size" | "name" | "quant";
+type SortDirection = "asc" | "desc";
+
+interface SortState {
+  field: SortField;
+  direction: SortDirection;
+}
+
+const SORT_FIELDS: { value: SortField; label: string }[] = [
+  { value: "size", label: "Size" },
+  { value: "name", label: "Name" },
+  { value: "quant", label: "Quant" },
+];
+
+function sortModels(models: ModelInfo[], sort: SortState): ModelInfo[] {
+  return [...models].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sort.field) {
+      case "size":
+        comparison = a.sizeBytes - b.sizeBytes;
+        break;
+      case "name":
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case "quant":
+        // Sort by quantization level (higher bits = less compression)
+        const getQuantLevel = (q: string) => {
+          if (q.startsWith("Q8")) return 8;
+          if (q.startsWith("Q6")) return 6;
+          if (q.startsWith("Q5")) return 5;
+          if (q.startsWith("Q4")) return 4;
+          if (q.startsWith("Q3")) return 3;
+          if (q.startsWith("Q2")) return 2;
+          return 0;
+        };
+        comparison = getQuantLevel(a.quantization) - getQuantLevel(b.quantization);
+        break;
+    }
+
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+}
 
 export default function ModelManagerScreen() {
   const router = useRouter();
@@ -32,6 +79,7 @@ export default function ModelManagerScreen() {
   const iconColor = useThemeColor({}, "text");
   const cardBackground = useThemeColor({}, "cardBackground");
   const successColor = useThemeColor({}, "success");
+  const borderColor = useThemeColor({}, "border");
 
   const models = useModelStore(state => state.models);
   const modelStates = useModelStore(state => state.modelStates);
@@ -50,19 +98,33 @@ export default function ModelManagerScreen() {
   const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
 
   const [isImporting, setIsImporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sort, setSort] = useState<SortState>({ field: "size", direction: "asc" });
 
   // Helper to get model state
   const getModelState = (modelId: string) => {
     return modelStates[modelId] ?? { status: "not-downloaded" as const, progress: 0 };
   };
 
+  // Filter models by search query
+  const filteredModels = (() => {
+    if (!searchQuery.trim()) return models;
+    const query = searchQuery.toLowerCase();
+    return models.filter(
+      m =>
+        m.name.toLowerCase().includes(query) ||
+        m.quantization.toLowerCase().includes(query) ||
+        m.description.toLowerCase().includes(query),
+    );
+  })();
+
   // Split models into downloaded and available
-  const downloadedModels = models.filter(m => {
+  const downloadedModels = filteredModels.filter(m => {
     const state = getModelState(m.id);
     return state.status === "downloaded" || state.status === "ready" || state.status === "loading";
   });
 
-  const availableModels = models.filter(m => {
+  const availableModels = filteredModels.filter(m => {
     const state = getModelState(m.id);
     return (
       state.status === "not-downloaded" ||
@@ -71,8 +133,26 @@ export default function ModelManagerScreen() {
     );
   });
 
-  // Count downloaded models
-  const downloadedCount = downloadedModels.length;
+  // Sort available models
+  const sortedAvailableModels = sortModels(availableModels, sort);
+
+  // Count downloaded models (from all models, not filtered)
+  const downloadedCount = models.filter(m => {
+    const state = getModelState(m.id);
+    return state.status === "downloaded" || state.status === "ready" || state.status === "loading";
+  }).length;
+
+  const handleSortChange = (field: SortField) => {
+    impactAsync(ImpactFeedbackStyle.Light);
+    setSort(prev => {
+      if (prev.field === field) {
+        // Toggle direction
+        return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      // New field, default to ascending
+      return { field, direction: "asc" };
+    });
+  };
 
   const handleDownload = async (modelId: string) => {
     await downloadModel(modelId);
@@ -199,6 +279,25 @@ export default function ModelManagerScreen() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: cardBackground, borderColor }]}>
+          <Ionicons name="search" size={18} color={iconColor} style={{ opacity: 0.5 }} />
+          <TextInput
+            style={[styles.searchInput, { color: iconColor }]}
+            placeholder="Search models..."
+            placeholderTextColor={iconColor + "60"}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={18} color={iconColor} style={{ opacity: 0.5 }} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Import Section */}
         <TouchableOpacity
           style={[styles.importCard, { borderColor: tintColor + "40" }]}
@@ -261,8 +360,8 @@ export default function ModelManagerScreen() {
           </>
         )}
 
-        {/* Available Models Section */}
-        {availableModels.length > 0 && (
+        {/* Available Models Section with Sort */}
+        {sortedAvailableModels.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
@@ -270,11 +369,39 @@ export default function ModelManagerScreen() {
                 <ThemedText style={styles.sectionTitle}>Available Models</ThemedText>
               </View>
               <ThemedText style={styles.sectionSubtitle}>
-                Optimized for mobile performance
+                {sortedAvailableModels.length} models available
               </ThemedText>
             </View>
 
-            {availableModels.map((model, index) => (
+            {/* Sort Options */}
+            <View style={styles.sortRow}>
+              <ThemedText style={styles.sortLabel}>Sort:</ThemedText>
+              <View style={styles.sortOptions}>
+                {SORT_FIELDS.map(field => {
+                  const isActive = sort.field === field.value;
+                  const arrow = isActive ? (sort.direction === "asc" ? "↑" : "↓") : "";
+                  return (
+                    <TouchableOpacity
+                      key={field.value}
+                      style={[
+                        styles.sortButton,
+                        { backgroundColor: cardBackground },
+                        isActive && { backgroundColor: tintColor + "20" },
+                      ]}
+                      onPress={() => handleSortChange(field.value)}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={[styles.sortButtonText, isActive && { color: tintColor }]}>
+                        {field.label} {arrow}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Model List */}
+            {sortedAvailableModels.map((model, index) => (
               <ModelCard
                 key={model.id}
                 model={model}
@@ -284,10 +411,19 @@ export default function ModelManagerScreen() {
                 onCancelDownload={() => handleCancelDownload(model.id)}
                 onDelete={() => handleDelete(model.id)}
                 onLoad={() => handleLoad(model.id)}
-                isLast={index === availableModels.length - 1}
+                isLast={index === sortedAvailableModels.length - 1}
               />
             ))}
           </>
+        )}
+
+        {/* No results */}
+        {searchQuery && filteredModels.length === 0 && (
+          <View style={styles.noResults}>
+            <Ionicons name="search-outline" size={48} color={iconColor} style={{ opacity: 0.3 }} />
+            <ThemedText style={styles.noResultsText}>No models found</ThemedText>
+            <ThemedText style={styles.noResultsSubtext}>Try a different search term</ThemedText>
+          </View>
         )}
 
         {/* Info Footer */}
@@ -438,6 +574,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.5,
     marginLeft: 24,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+  sortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    gap: 8,
+  },
+  sortLabel: {
+    fontSize: 13,
+    opacity: 0.5,
+  },
+  sortOptions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  sortButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  noResults: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    gap: 8,
+  },
+  noResultsText: {
+    fontSize: 18,
+    fontWeight: "600",
+    opacity: 0.6,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    opacity: 0.4,
   },
   footer: {
     flexDirection: "row",

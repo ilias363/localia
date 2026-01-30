@@ -260,6 +260,9 @@ export function ModelCard({
 
   const canDelete = state.status === "downloaded" || state.status === "ready";
 
+  // Extract short name (just quantization) for compact display
+  const shortName = model.quantization;
+
   return (
     <View style={[styles.card, { backgroundColor: cardBackground }, !isLast && styles.cardMargin]}>
       {/* Active indicator glow */}
@@ -282,36 +285,33 @@ export function ModelCard({
       )}
 
       <View style={styles.content}>
-        {/* Header Row */}
+        {/* Model Name Row */}
+        <View style={styles.nameRow}>
+          <ThemedText style={styles.modelName} numberOfLines={1}>
+            {model.name}
+          </ThemedText>
+          {isActive && <View style={[styles.activeIndicator, { backgroundColor: successColor }]} />}
+        </View>
+
+        {/* Compact Header Row */}
         <View style={styles.headerRow}>
-          {/* Model Icon */}
-          <View style={[styles.modelIcon, { backgroundColor: tintColor + "15" }]}>
-            <Ionicons name="cube" size={24} color={tintColor} />
-            {/* Size badge */}
-            <View style={[styles.sizeBadge, { backgroundColor: cardBackground }]}>
+          {/* Left: Quantization badge + Status/Size column */}
+          <View style={styles.leftSection}>
+            <View style={[styles.quantBadge, { backgroundColor: tintColor + "15" }]}>
+              <ThemedText style={[styles.quantText, { color: tintColor }]}>{shortName}</ThemedText>
+            </View>
+            <View style={styles.infoColumn}>
+              <View style={styles.statusRow}>
+                <Ionicons name={statusConfig.icon} size={12} color={statusConfig.color} />
+                <ThemedText style={[styles.statusText, { color: statusConfig.color }]}>
+                  {statusConfig.text}
+                </ThemedText>
+              </View>
               <ThemedText style={styles.sizeText}>{model.size}</ThemedText>
             </View>
           </View>
 
-          {/* Model Info */}
-          <View style={styles.modelInfo}>
-            <View style={styles.titleRow}>
-              <ThemedText style={styles.modelName} numberOfLines={1}>
-                {model.name}
-              </ThemedText>
-              {isActive && (
-                <View style={[styles.activeIndicator, { backgroundColor: successColor }]} />
-              )}
-            </View>
-            <View style={styles.statusRow}>
-              <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
-              <ThemedText style={[styles.statusText, { color: statusConfig.color }]}>
-                {statusConfig.text}
-              </ThemedText>
-            </View>
-          </View>
-
-          {/* Actions */}
+          {/* Right: Actions */}
           <View style={styles.actionsRow}>
             {canDelete && (
               <TouchableOpacity
@@ -320,41 +320,15 @@ export function ModelCard({
                 disabled={isActionLoading}
                 activeOpacity={0.7}
               >
-                <Ionicons name="trash-outline" size={18} color={dangerColor} />
+                <Ionicons name="trash-outline" size={16} color={dangerColor} />
               </TouchableOpacity>
             )}
             {renderPrimaryAction()}
           </View>
         </View>
 
-        {/* Description */}
-        <ThemedText style={styles.description} numberOfLines={2}>
-          {model.description}
-        </ThemedText>
-
-        {/* Tags Row */}
-        <View style={styles.tagsRow}>
-          <View style={[styles.tag, { backgroundColor: textColor + "08" }]}>
-            <Ionicons
-              name="speedometer-outline"
-              size={12}
-              color={textColor}
-              style={{ opacity: 0.6 }}
-            />
-            <ThemedText style={styles.tagText}>{model.quantization}</ThemedText>
-          </View>
-          <View style={[styles.tag, { backgroundColor: textColor + "08" }]}>
-            <Ionicons
-              name="document-text-outline"
-              size={12}
-              color={textColor}
-              style={{ opacity: 0.6 }}
-            />
-            <ThemedText style={styles.tagText}>
-              {model.contextLength.toLocaleString()} ctx
-            </ThemedText>
-          </View>
-        </View>
+        {/* Description - full text */}
+        <ThemedText style={styles.description}>{model.description}</ThemedText>
       </View>
     </View>
   );
@@ -362,101 +336,94 @@ export function ModelCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: 14,
     overflow: "hidden",
     position: "relative",
   },
   cardMargin: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   activeGlow: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    width: 4,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    width: 3,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
   },
   progressContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 2,
     backgroundColor: "rgba(0,0,0,0.1)",
   },
   progressBar: {
     height: "100%",
   },
   content: {
-    padding: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  headerRow: {
+  nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
-  },
-  modelIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  sizeBadge: {
-    position: "absolute",
-    bottom: -4,
-    right: -4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sizeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    opacity: 0.7,
-  },
-  modelInfo: {
-    flex: 1,
-    marginLeft: 16,
-    marginRight: 12,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   modelName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "600",
     flex: 1,
   },
   activeIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginLeft: 8,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginLeft: 6,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  leftSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 10,
+  },
+  quantBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  quantText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  infoColumn: {
+    flex: 1,
   },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   statusText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
   },
+  sizeText: {
+    fontSize: 11,
+    opacity: 0.5,
+  },
   primaryButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -468,54 +435,35 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   deleteIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   activeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   activePulse: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   activeText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
   },
   description: {
-    fontSize: 14,
-    opacity: 0.6,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  tagsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  tagText: {
     fontSize: 12,
-    fontWeight: "500",
     opacity: 0.6,
+    lineHeight: 18,
   },
 });
