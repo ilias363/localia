@@ -327,6 +327,14 @@ export function ModelCard({
 
         {/* Description - full text */}
         <ThemedText style={styles.description}>{model.description}</ThemedText>
+
+        {/* Provider info */}
+        <View style={styles.providerRow}>
+          <Ionicons name="person-circle-outline" size={12} color={textColor + "60"} />
+          <ThemedText style={[styles.providerText, { color: textColor + "60" }]}>
+            {model.provider}
+          </ThemedText>
+        </View>
       </View>
     </View>
   );
@@ -463,5 +471,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.6,
     lineHeight: 18,
+  },
+  providerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  providerText: {
+    fontSize: 11,
+    fontWeight: "500",
   },
 });

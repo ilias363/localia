@@ -38,6 +38,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q4km",
     name: "TinyLlama 1.1B Q4_K_M",
+    provider: "TheBloke",
     description: "Recommended. Medium size with balanced quality. Great for mobile devices.",
     size: "669 MB",
     sizeBytes: 669_000_000,
@@ -51,6 +52,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q8_0",
     name: "TinyLlama 1.1B Q8_0",
+    provider: "TheBloke",
     description:
       "Highest quality, largest size. Extremely low quality loss. Best for devices with ample storage.",
     size: "1.17 GB",
@@ -65,6 +67,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q6k",
     name: "TinyLlama 1.1B Q6_K",
+    provider: "TheBloke",
     description:
       "Very high quality with extremely low quality loss. Great balance of size and performance.",
     size: "904 MB",
@@ -79,6 +82,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q5km",
     name: "TinyLlama 1.1B Q5_K_M",
+    provider: "TheBloke",
     description:
       "Recommended. Large size with very low quality loss. Excellent for capable devices.",
     size: "783 MB",
@@ -93,6 +97,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q5ks",
     name: "TinyLlama 1.1B Q5_K_S",
+    provider: "TheBloke",
     description:
       "Recommended. Large size with low quality loss. Good for devices with more storage.",
     size: "767 MB",
@@ -107,6 +112,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q5_0",
     name: "TinyLlama 1.1B Q5_0",
+    provider: "TheBloke",
     description:
       "Legacy format. Medium size with balanced quality. Prefer Q4_K_M for better results.",
     size: "767 MB",
@@ -121,6 +127,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q4ks",
     name: "TinyLlama 1.1B Q4_K_S",
+    provider: "TheBloke",
     description:
       "Small size with slightly more quality loss than Q4_K_M. Good for limited storage.",
     size: "644 MB",
@@ -135,6 +142,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q4_0",
     name: "TinyLlama 1.1B Q4_0",
+    provider: "TheBloke",
     description:
       "Legacy format. Small size with high quality loss. Prefer Q3_K_M for similar size.",
     size: "638 MB",
@@ -149,6 +157,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q3kl",
     name: "TinyLlama 1.1B Q3_K_L",
+    provider: "TheBloke",
     description: "Small size with substantial quality loss. Good for very limited storage devices.",
     size: "593 MB",
     sizeBytes: 593_000_000,
@@ -162,6 +171,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q3km",
     name: "TinyLlama 1.1B Q3_K_M",
+    provider: "TheBloke",
     description: "Very small size with high quality loss. Use when storage is extremely limited.",
     size: "551 MB",
     sizeBytes: 551_000_000,
@@ -175,6 +185,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q3ks",
     name: "TinyLlama 1.1B Q3_K_S",
+    provider: "TheBloke",
     description:
       "Very small size with high quality loss. Fastest option with noticeable quality trade-off.",
     size: "500 MB",
@@ -189,6 +200,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "tinyllama-1.1b-chat-q2k",
     name: "TinyLlama 1.1B Q2_K",
+    provider: "TheBloke",
     description: "Smallest size with significant quality loss. Not recommended for most use cases.",
     size: "483 MB",
     sizeBytes: 483_000_000,
@@ -204,6 +216,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen3-0.6b-q8_0",
     name: "Qwen3 0.6B Q8_0",
+    provider: "Qwen",
     description: "Ultra-lightweight Qwen3 model. Perfect for low-end devices with limited RAM.",
     size: "639 MB",
     sizeBytes: 639_000_000,
@@ -216,6 +229,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen3-1.7b-q8_0",
     name: "Qwen3 1.7B Q8_0",
+    provider: "Qwen",
     description:
       "Recommended. Excellent balance of size and quality. Great for most mobile devices.",
     size: "1.83 GB",
@@ -229,6 +243,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen3-4b-q4km",
     name: "Qwen3 4B Q4_K_M",
+    provider: "Qwen",
     description: "High-quality Qwen3 model. Best for high-end devices with 8GB+ RAM.",
     size: "2.5 GB",
     sizeBytes: 2_500_000_000,
@@ -241,6 +256,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen3-8b-q4km",
     name: "Qwen3 8B Q4_K_M",
+    provider: "Qwen",
     description: "Flagship Qwen3 model. Only for high-end devices with 12GB+ RAM.",
     size: "5.03 GB",
     sizeBytes: 5_030_000_000,
@@ -255,6 +271,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen2.5-0.5b-instruct-q4km",
     name: "Qwen2.5 0.5B Q4_K_M",
+    provider: "Qwen",
     description: "Ultra-compact Qwen2.5 model. Great for devices with limited storage.",
     size: "491 MB",
     sizeBytes: 491_000_000,
@@ -268,6 +285,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen2.5-0.5b-instruct-q8_0",
     name: "Qwen2.5 0.5B Q8_0",
+    provider: "Qwen",
     description: "Ultra-compact with highest quality. Perfect for low-end devices.",
     size: "676 MB",
     sizeBytes: 676_000_000,
@@ -281,6 +299,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen2.5-1.5b-instruct-q4km",
     name: "Qwen2.5 1.5B Q4_K_M",
+    provider: "Qwen",
     description: "Recommended. Well-balanced Qwen2.5 model with excellent performance.",
     size: "1.12 GB",
     sizeBytes: 1_120_000_000,
@@ -294,6 +313,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen2.5-1.5b-instruct-q8_0",
     name: "Qwen2.5 1.5B Q8_0",
+    provider: "Qwen",
     description: "High quality Qwen2.5 1.5B. Excellent for mid-range devices.",
     size: "1.89 GB",
     sizeBytes: 1_890_000_000,
@@ -307,6 +327,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "qwen2.5-3b-instruct-q4km",
     name: "Qwen2.5 3B Q4_K_M",
+    provider: "Qwen",
     description: "Powerful Qwen2.5 model. Best for high-end devices with 8GB+ RAM.",
     size: "2.1 GB",
     sizeBytes: 2_100_000_000,
@@ -322,6 +343,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "smollm2-360m-instruct-q8_0",
     name: "SmolLM2 360M Q8_0",
+    provider: "HuggingFaceTB",
     description:
       "Ultra-tiny model by HuggingFace. Perfect for very low-end devices with minimal RAM.",
     size: "386 MB",
@@ -336,6 +358,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "smollm2-1.7b-instruct-q4km",
     name: "SmolLM2 1.7B Q4_K_M",
+    provider: "HuggingFaceTB",
     description: "Recommended. Compact and efficient model by HuggingFace. Great for mobile.",
     size: "1.06 GB",
     sizeBytes: 1_060_000_000,
@@ -351,6 +374,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "llama-3.2-1b-instruct-q8_0",
     name: "Llama 3.2 1B Q8_0",
+    provider: "hugging-quants",
     description: "Recommended. Meta's compact multilingual model. Supports 8 languages.",
     size: "1.32 GB",
     sizeBytes: 1_320_000_000,
@@ -364,6 +388,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "llama-3.2-3b-instruct-q4km",
     name: "Llama 3.2 3B Q4_K_M",
+    provider: "lmstudio-community",
     description: "Recommended. Meta's powerful compact model. 128K context, 8 languages support.",
     size: "2.02 GB",
     sizeBytes: 2_020_000_000,
@@ -377,6 +402,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "llama-3.2-3b-instruct-q8_0",
     name: "Llama 3.2 3B Q8_0",
+    provider: "lmstudio-community",
     description: "High quality Llama 3.2 3B. Best for capable devices with 6GB+ RAM.",
     size: "3.42 GB",
     sizeBytes: 3_420_000_000,
@@ -392,6 +418,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "phi-3-mini-4k-instruct-q4",
     name: "Phi-3 Mini 4K Q4",
+    provider: "microsoft",
     description:
       "Microsoft's reasoning-focused model. Excels at math, logic and code. 3.8B params.",
     size: "2.2 GB",
@@ -408,6 +435,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "gemma-3-4b-it-q4km",
     name: "Gemma 3 4B Q4_K_M",
+    provider: "unsloth",
     description: "Google's latest compact model. 128K context, multimodal capable, 140+ languages.",
     size: "2.49 GB",
     sizeBytes: 2_490_000_000,
@@ -421,6 +449,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: "gemma-3-4b-it-q8_0",
     name: "Gemma 3 4B Q8_0",
+    provider: "unsloth",
     description:
       "High quality Gemma 3. Best for devices with 8GB+ RAM. Great multilingual support.",
     size: "4.13 GB",

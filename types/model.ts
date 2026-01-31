@@ -3,6 +3,7 @@
 export interface ModelInfo {
   id: string;
   name: string;
+  provider: string; // Who provided the model
   description: string;
   size: string; // Human readable size
   sizeBytes: number;

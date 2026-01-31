@@ -511,6 +511,7 @@ export const useModelStore = create<ModelStore>()(
             const customModel: ModelInfo = {
               id: `${CUSTOM_MODEL_PREFIX}${Date.now()}`,
               name: asset.name.replace(".gguf", ""),
+              provider: "Custom",
               description: "Imported GGUF model",
               size: asset.size ? formatBytes(asset.size) : "Unknown",
               sizeBytes: asset.size ?? 0,
