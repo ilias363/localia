@@ -59,18 +59,20 @@ export function ModelCard({
 
   const handleDownload = async () => {
     triggerMedium();
-    setIsActionLoading(true);
     try {
-      await onDownload();
-      triggerSuccess();
+      onDownload().catch(error => {
+        triggerError();
+        const message = error instanceof Error ? error.message : "Download failed";
+        if (!message.toLowerCase().includes("cancel")) {
+          Alert.alert("Download Error", message);
+        }
+      });
     } catch (error) {
       triggerError();
       const message = error instanceof Error ? error.message : "Download failed";
       if (!message.toLowerCase().includes("cancel")) {
         Alert.alert("Download Error", message);
       }
-    } finally {
-      setIsActionLoading(false);
     }
   };
 
@@ -140,7 +142,7 @@ export function ModelCard({
         return {
           color: tintColor,
           icon: "cloud-download" as const,
-          text: `${state.progress.toFixed(1)}%`,
+          text: state.progress > 0 ? `Downloading ${state.progress.toFixed(1)}%` : "Downloading...",
         };
       case "downloaded":
         return {

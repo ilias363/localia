@@ -151,7 +151,7 @@ export default function ModelManagerScreen() {
   };
 
   const handleDownload = async (modelId: string) => {
-    await downloadModel(modelId);
+    downloadModel(modelId);
   };
 
   const handleCancelDownload = (modelId: string) => {

@@ -1,8 +1,12 @@
 import { AVAILABLE_MODELS, CUSTOM_MODEL_PREFIX } from "@/constants/models";
 import type { ActiveModel, ModelInfo, ModelState } from "@/types";
+import {
+  completeHandler,
+  createDownloadTask,
+  type DownloadTask,
+} from "@kesha-antonov/react-native-background-downloader";
 import { getDocumentAsync } from "expo-document-picker";
 import { Directory, File, Paths } from "expo-file-system";
-import { createDownloadResumable, DownloadResumable } from "expo-file-system/legacy";
 import { create } from "zustand";
 import { createJSONStorage, persist, subscribeWithSelector } from "zustand/middleware";
 import { zustandStorage } from "./mmkv";
@@ -12,12 +16,12 @@ const STORE_VERSION = 1;
 
 // Non-persisted runtime state (download refs, loading states)
 interface RuntimeState {
-  downloadResumables: Record<string, DownloadResumable>;
+  downloadTasks: Record<string, DownloadTask>;
   cancelledDownloads: Set<string>;
 }
 
 const runtimeState: RuntimeState = {
-  downloadResumables: {},
+  downloadTasks: {},
   cancelledDownloads: new Set(),
 };
 
@@ -49,7 +53,7 @@ interface ModelStoreActions {
 
   // Model operations
   downloadModel: (modelId: string) => Promise<void>;
-  cancelDownload: (modelId: string) => Promise<void>;
+  cancelDownload: (modelId: string) => void;
   deleteModel: (modelId: string) => Promise<void>;
   loadModel: (modelId: string) => Promise<void>;
   unloadModel: () => Promise<void>;
@@ -195,18 +199,10 @@ export const useModelStore = create<ModelStore>()(
 
         // Model operations
         downloadModel: async (modelId: string) => {
-          const { models, updateModelState, modelStates } = get();
+          const { models, updateModelState } = get();
           const model = models.find(m => m.id === modelId);
           if (!model) {
             throw new Error(`Model ${modelId} not found`);
-          }
-
-          // Check if any model is currently loading (blocks JS thread)
-          const isAnyModelLoading = Object.values(modelStates).some(s => s.status === "loading");
-          if (isAnyModelLoading) {
-            throw new Error(
-              "Cannot download while a model is loading. Please wait for the model to finish loading.",
-            );
           }
 
           try {
@@ -227,72 +223,112 @@ export const useModelStore = create<ModelStore>()(
 
             const modelFile = getModelFilePath(model.fileName);
 
-            // Create download resumable with progress callback (using legacy API for progress support)
-            const downloadResumable = createDownloadResumable(
-              model.downloadUrl,
-              modelFile.uri,
-              {},
-              downloadProgress => {
-                // Check if cancelled during download
-                if (runtimeState.cancelledDownloads.has(modelId)) {
-                  return;
-                }
-                const progress =
-                  (downloadProgress.totalBytesWritten /
-                    downloadProgress.totalBytesExpectedToWrite) *
-                  100;
-                // Round to 1 decimal place
-                const roundedProgress = Math.round(progress * 10) / 10;
-                updateModelState(modelId, {
-                  status: "downloading",
-                  progress: Math.min(roundedProgress, 99.9),
-                });
-              },
-            );
+            // Clear any previous cancelled state for this model
+            runtimeState.cancelledDownloads.delete(modelId);
+
+            // Use a unique task ID to avoid library caching issues
+            const taskId = `${modelId}-${Date.now()}`;
+
+            // Use background downloader for non-blocking downloads
+            const task = createDownloadTask({
+              id: taskId,
+              url: model.downloadUrl,
+              destination: modelFile.uri,
+            });
 
             // Store for cancellation
-            runtimeState.downloadResumables[modelId] = downloadResumable;
+            runtimeState.downloadTasks[modelId] = task;
 
-            const result = await downloadResumable.downloadAsync();
+            return new Promise<void>((resolve, reject) => {
+              task
+                .begin(({ expectedBytes }) => {
+                  console.log(`Starting download of ${model.name}: ${expectedBytes} bytes`);
+                })
+                .progress(({ bytesDownloaded, bytesTotal }) => {
+                  // Check if cancelled during download
+                  if (runtimeState.cancelledDownloads.has(modelId)) {
+                    return;
+                  }
+                  const progress = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
+                  const roundedProgress = Math.round(progress * 10) / 10;
+                  updateModelState(modelId, {
+                    status: "downloading",
+                    progress: Math.min(roundedProgress, 99.9),
+                  });
+                })
+                .done(({ bytesDownloaded, bytesTotal }) => {
+                  delete runtimeState.downloadTasks[modelId];
+                  completeHandler(taskId);
 
-            delete runtimeState.downloadResumables[modelId];
+                  // Check if download was cancelled while in progress
+                  if (runtimeState.cancelledDownloads.has(modelId)) {
+                    runtimeState.cancelledDownloads.delete(modelId);
+                    updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                    resolve();
+                    return;
+                  }
 
-            // Check if download was cancelled while in progress
-            if (runtimeState.cancelledDownloads.has(modelId)) {
-              runtimeState.cancelledDownloads.delete(modelId);
-              updateModelState(modelId, { status: "not-downloaded", progress: 0 });
-              return;
-            }
+                  // Verify downloaded file size
+                  const downloadedFile = new File(modelFile.uri);
+                  if (downloadedFile.exists && model.sizeBytes > 0) {
+                    const fileSize = downloadedFile.size ?? 0;
+                    const minExpectedSize = model.sizeBytes * 0.95;
+                    if (fileSize < minExpectedSize) {
+                      try {
+                        downloadedFile.delete();
+                      } catch {
+                        // Ignore delete errors
+                      }
+                      reject(
+                        new Error(
+                          `Download incomplete: got ${formatBytes(fileSize)}, expected ${model.size}`,
+                        ),
+                      );
+                      return;
+                    }
+                  }
 
-            if (!result?.uri) {
-              throw new Error("Download failed - no URI returned");
-            }
+                  updateModelState(modelId, {
+                    status: "downloaded",
+                    progress: 100,
+                    localPath: modelFile.uri,
+                  });
+                  resolve();
+                })
+                .error(({ error, errorCode }) => {
+                  delete runtimeState.downloadTasks[modelId];
 
-            // Verify downloaded file size
-            const downloadedFile = new File(result.uri);
-            if (downloadedFile.exists && model.sizeBytes > 0) {
-              const fileSize = downloadedFile.size ?? 0;
-              const minExpectedSize = model.sizeBytes * 0.95;
-              if (fileSize < minExpectedSize) {
-                // Download is incomplete
-                try {
-                  downloadedFile.delete();
-                } catch {
-                  // Ignore delete errors
-                }
-                throw new Error(
-                  `Download incomplete: got ${formatBytes(fileSize)}, expected ${model.size}`,
-                );
-              }
-            }
+                  // Check if download was cancelled
+                  if (runtimeState.cancelledDownloads.has(modelId)) {
+                    runtimeState.cancelledDownloads.delete(modelId);
+                    updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                    resolve();
+                    return;
+                  }
 
-            updateModelState(modelId, {
-              status: "downloaded",
-              progress: 100,
-              localPath: result.uri,
+                  // Don't report cancellation/abort as an error
+                  if (
+                    error.toLowerCase().includes("cancel") ||
+                    error.toLowerCase().includes("abort") ||
+                    error.toLowerCase().includes("stop")
+                  ) {
+                    updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                    resolve();
+                    return;
+                  }
+
+                  updateModelState(modelId, {
+                    status: "error",
+                    error: error,
+                  });
+                  reject(new Error(error));
+                });
+
+              // Start the download
+              task.start();
             });
           } catch (error) {
-            delete runtimeState.downloadResumables[modelId];
+            delete runtimeState.downloadTasks[modelId];
 
             // Check if download was cancelled
             if (runtimeState.cancelledDownloads.has(modelId)) {
@@ -302,54 +338,35 @@ export const useModelStore = create<ModelStore>()(
             }
 
             const errorMessage = error instanceof Error ? error.message : "Unknown download error";
-
-            // Don't report cancellation/abort as an error
-            if (
-              errorMessage.toLowerCase().includes("cancel") ||
-              errorMessage.toLowerCase().includes("abort") ||
-              errorMessage.toLowerCase().includes("pause")
-            ) {
-              updateModelState(modelId, { status: "not-downloaded", progress: 0 });
-              // Don't throw for cancellation - it's not an error
-              return;
-            } else {
-              updateModelState(modelId, {
-                status: "error",
-                error: errorMessage,
-              });
-              throw error;
-            }
+            updateModelState(modelId, {
+              status: "error",
+              error: errorMessage,
+            });
+            throw error;
           }
         },
 
-        cancelDownload: async (modelId: string) => {
-          // Mark as cancelled FIRST and update UI immediately
+        cancelDownload: (modelId: string) => {
+          // Update UI immediately
           runtimeState.cancelledDownloads.add(modelId);
           get().updateModelState(modelId, { status: "not-downloaded", progress: 0 });
 
-          const downloadResumable = runtimeState.downloadResumables[modelId];
-          if (downloadResumable) {
-            // Pause in background - don't wait for it
-            downloadResumable.pauseAsync().catch(() => {
-              // Ignore pause errors - download might already be done or failed
-            });
-            delete runtimeState.downloadResumables[modelId];
+          // Stop the download task (instant, non-blocking)
+          const task = runtimeState.downloadTasks[modelId];
+          if (task) {
+            delete runtimeState.downloadTasks[modelId];
+            task.stop().catch(() => { });
           }
 
-          // Clean up partial file in background
+          // Clean up partial file after a delay
           const { models } = get();
           const model = models.find(m => m.id === modelId);
           if (model) {
             const modelFile = getModelFilePath(model.fileName);
-            // Wait a bit for the file handle to be released, then delete
             setTimeout(() => {
-              if (modelFile.exists) {
-                try {
-                  modelFile.delete();
-                } catch (e) {
-                  console.warn("Failed to delete partial download:", e);
-                }
-              }
+              try {
+                if (modelFile.exists) modelFile.delete();
+              } catch { }
             }, 500);
           }
         },
@@ -360,7 +377,11 @@ export const useModelStore = create<ModelStore>()(
 
           // Clean up any pending download state
           runtimeState.cancelledDownloads.delete(modelId);
-          delete runtimeState.downloadResumables[modelId];
+          const task = runtimeState.downloadTasks[modelId];
+          if (task) {
+            delete runtimeState.downloadTasks[modelId];
+            task.stop().catch(() => { });
+          }
 
           // Unload if active
           if (activeModelId === modelId) {
@@ -395,20 +416,10 @@ export const useModelStore = create<ModelStore>()(
         },
 
         loadModel: async (modelId: string) => {
-          const { models, getModelState, updateModelState, modelStates } = get();
+          const { models, getModelState, updateModelState } = get();
           const model = models.find(m => m.id === modelId);
           if (!model) {
             throw new Error(`Model ${modelId} not found`);
-          }
-
-          // Check if any model is currently downloading
-          const isAnyModelDownloading = Object.values(modelStates).some(
-            s => s.status === "downloading",
-          );
-          if (isAnyModelDownloading) {
-            throw new Error(
-              "Cannot load a model while a download is in progress. Please wait for the download to complete or cancel it.",
-            );
           }
 
           const state = getModelState(modelId);
