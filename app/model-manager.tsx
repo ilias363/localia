@@ -232,29 +232,32 @@ export default function ModelManagerScreen() {
             { text: "Cancel", style: "cancel" },
             {
               text: "Add File",
-              onPress: async () => {
+              onPress: () => {
                 setIsImporting(true);
-                try {
-                  await importModel({
-                    name: existingModel.name,
-                    provider: existingModel.provider,
-                    description: existingModel.description,
-                    quantization: existingModel.quantization,
-                    contextLength: existingModel.contextLength,
-                    chatTemplate: existingModel.chatTemplate,
-                    fileUri: asset.uri,
-                    fileName: asset.name,
-                    fileSize: asset.size,
-                  });
-                  triggerSuccess();
-                  Alert.alert("Success", `"${existingModel.name}" has been added.`);
-                } catch (error) {
-                  triggerError();
-                  const message = error instanceof Error ? error.message : "Failed to import";
-                  Alert.alert("Error", message);
-                } finally {
-                  setIsImporting(false);
-                }
+                // Use setTimeout to ensure the loading state renders before synchronous file copy
+                setTimeout(async () => {
+                  try {
+                    await importModel({
+                      name: existingModel.name,
+                      provider: existingModel.provider,
+                      description: existingModel.description,
+                      quantization: existingModel.quantization,
+                      contextLength: existingModel.contextLength,
+                      chatTemplate: existingModel.chatTemplate,
+                      fileUri: asset.uri,
+                      fileName: asset.name,
+                      fileSize: asset.size,
+                    });
+                    triggerSuccess();
+                    Alert.alert("Success", `"${existingModel.name}" has been added.`);
+                  } catch (error) {
+                    triggerError();
+                    const message = error instanceof Error ? error.message : "Failed to import";
+                    Alert.alert("Error", message);
+                  } finally {
+                    setIsImporting(false);
+                  }
+                }, 100);
               },
             },
           ],
@@ -333,7 +336,6 @@ export default function ModelManagerScreen() {
         <TouchableOpacity
           style={[styles.importCard, { borderColor: tintColor + "40" }]}
           onPress={handlePickFile}
-          disabled={isImporting}
           activeOpacity={0.7}
         >
           <LinearGradient
@@ -343,11 +345,7 @@ export default function ModelManagerScreen() {
             style={styles.importCardGradient}
           >
             <View style={[styles.importIconContainer, { backgroundColor: tintColor + "20" }]}>
-              {isImporting ? (
-                <ActivityIndicator size="small" color={tintColor} />
-              ) : (
-                <Ionicons name="add-circle-outline" size={22} color={tintColor} />
-              )}
+              <Ionicons name="add-circle-outline" size={22} color={tintColor} />
             </View>
             <View style={styles.importTextContainer}>
               <ThemedText style={styles.importTitle}>Import Custom Model</ThemedText>
@@ -487,6 +485,17 @@ export default function ModelManagerScreen() {
           </ThemedText>
         </View>
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {isImporting && (
+        <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingCard, { backgroundColor: cardBackground }]}>
+            <ActivityIndicator size="large" color={tintColor} />
+            <ThemedText style={styles.loadingText}>Importing model...</ThemedText>
+            <ThemedText style={styles.loadingSubtext}>Copying file to app storage</ThemedText>
+          </View>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -686,5 +695,26 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     opacity: 0.4,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingCard: {
+    padding: 32,
+    borderRadius: 20,
+    alignItems: "center",
+    gap: 16,
+    minWidth: 200,
+  },
+  loadingText: {
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    opacity: 0.7,
   },
 });

@@ -65,33 +65,36 @@ export default function ImportModelScreen() {
 
     setIsImporting(true);
 
-    try {
-      const importedModel = await importModel({
-        name: form.name.trim(),
-        provider: form.provider.trim() || "Custom",
-        description: form.description.trim() || "Imported GGUF model",
-        quantization: form.quantization.trim() || "Unknown",
-        contextLength: parseInt(form.contextLength, 10) || 2048,
-        chatTemplate: form.chatTemplate,
-        fileUri: params.fileUri,
-        fileName: params.fileName,
-        fileSize,
-      });
-      if (importedModel) {
-        triggerSuccess();
-        Alert.alert(
-          "Model Imported",
-          `"${importedModel.name}" has been imported successfully. You can now load it.`,
-          [{ text: "OK", onPress: () => router.back() }],
-        );
+    // Use setTimeout to ensure the loading overlay renders before the synchronous file copy
+    setTimeout(async () => {
+      try {
+        const importedModel = await importModel({
+          name: form.name.trim(),
+          provider: form.provider.trim() || "Custom",
+          description: form.description.trim() || "Imported GGUF model",
+          quantization: form.quantization.trim() || "Unknown",
+          contextLength: parseInt(form.contextLength, 10) || 2048,
+          chatTemplate: form.chatTemplate,
+          fileUri: params.fileUri,
+          fileName: params.fileName,
+          fileSize,
+        });
+        if (importedModel) {
+          triggerSuccess();
+          Alert.alert(
+            "Model Imported",
+            `"${importedModel.name}" has been imported successfully. You can now load it.`,
+            [{ text: "OK", onPress: () => router.back() }],
+          );
+        }
+      } catch (error) {
+        triggerError();
+        const message = error instanceof Error ? error.message : "Failed to import model";
+        Alert.alert("Import Error", message);
+      } finally {
+        setIsImporting(false);
       }
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Failed to import model";
-      Alert.alert("Import Error", message);
-    } finally {
-      setIsImporting(false);
-    }
+    }, 100);
   };
 
   const handleCancel = () => {
