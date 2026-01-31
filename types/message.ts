@@ -6,6 +6,8 @@ export interface Message {
   content: string;
   timestamp: number; // Unix timestamp in milliseconds
   stats?: MessageStats; // Generation stats for assistant messages
+  modelId?: string; // ID of the model that generated this message (for assistant messages)
+  modelName?: string; // Display name of the model (for assistant messages)
 }
 
 // Stats for nerds - generation performance metrics

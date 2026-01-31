@@ -87,10 +87,12 @@ export function useChat() {
       updateConversationTitle(conversationId, generateTitle(content));
     }
 
-    // Add empty assistant message for streaming
+    // Add empty assistant message for streaming (with model info)
     const assistantMessage = addMessage(conversationId, {
       role: "assistant",
       content: "",
+      modelId: activeModel.id,
+      modelName: activeModel.name,
     });
 
     setIsGenerating(true);

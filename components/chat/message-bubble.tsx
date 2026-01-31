@@ -34,6 +34,15 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
+      {/* Model name header for assistant messages */}
+      {!isUser && message.modelName && (
+        <View style={styles.modelHeader}>
+          <ThemedText style={[styles.modelName, { color: subtleTextColor }]}>
+            {message.modelName}
+          </ThemedText>
+        </View>
+      )}
+
       <View
         style={[
           styles.bubble,
@@ -58,18 +67,15 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
 
       {/* Metadata row - aligned based on message sender */}
       <View style={[styles.metaRow, isUser ? styles.metaRowUser : styles.metaRowAssistant]}>
-        {showStats ? (
-          <>
-            <ThemedText style={[styles.statsText, { color: subtleTextColor }]}>
-              {message.stats!.tokensGenerated} tok • {message.stats!.tokensPerSecond.toFixed(1)}{" "}
-              tok/s • {(message.stats!.generationTimeMs / 1000).toFixed(1)}s
-            </ThemedText>
-            <ThemedText style={[styles.separator, { color: subtleTextColor }]}>•</ThemedText>
-          </>
-        ) : null}
         <ThemedText style={[styles.timestamp, { color: subtleTextColor }]}>
           {isStreaming ? "Generating..." : formatTime(message.timestamp)}
         </ThemedText>
+        {showStats ? (
+          <ThemedText style={[styles.statsText, { color: subtleTextColor }]}>
+            {message.stats!.tokensGenerated} tok • {message.stats!.tokensPerSecond.toFixed(1)} tok/s
+            • {(message.stats!.generationTimeMs / 1000).toFixed(1)}s
+          </ThemedText>
+        ) : null}
       </View>
     </View>
   );
@@ -172,10 +178,21 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   metaRowAssistant: {
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
   },
   timestamp: {
     fontSize: 11,
+    opacity: 0.7,
+    fontWeight: "500",
+  },
+  modelHeader: {
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
+  modelName: {
+    fontSize: 12,
+    fontWeight: "500",
+    opacity: 0.7,
   },
   statsText: {
     fontSize: 11,
