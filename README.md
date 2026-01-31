@@ -1,50 +1,47 @@
-# Welcome to your Expo app 👋
+# Localia
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A local AI chat application built with React Native and Expo. Run large language models (LLMs) directly on your device with complete privacy - no internet required.
 
-## Get started
+## Features
+
+- **100% Local Inference** - All AI processing happens on your device using [llama.rn](https://github.com/mybigday/llama.rn)
+- **Multiple Models** - Choose from various TinyLlama GGUF quantizations (Q2_K to Q8_0)
+- **Model Manager** - Download, import, and manage models with search and sort functionality
+- **Streaming Responses** - Real-time text generation with animated UI
+- **Conversation History** - Persistent chat storage with MMKV
+- **Custom Model Import** - Add your own GGUF models from device storage
+- **Dark/Light Theme** - System-aware theming
+
+## Tech Stack
+
+- **Framework**: React Native + Expo Router
+- **LLM Runtime**: llama.rn (GGUF format)
+- **State Management**: Zustand with MMKV persistence
+- **Animations**: React Native Reanimated
+- **UI**: Custom themed components with haptic feedback
+
+## Getting Started
 
 1. Install dependencies
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Start the app
 
    ```bash
-   npx expo start
+   pnpm expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. Run on your device/emulator:
+   - Press `a` for Android
+   - Press `i` for iOS
+   - Scan QR code with Expo Go
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Usage
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. Open the **Model Manager** from the side drawer
+2. Download a model (smaller quantizations like Q2_K are faster to download)
+3. Tap the play button to load the model
+4. Return to chat and start conversing!
