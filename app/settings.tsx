@@ -1,11 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   Linking,
+  Modal,
   ScrollView,
   StyleSheet,
   Switch,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -16,7 +20,7 @@ import { ThemedView } from "@/components/themed-view";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
-import { useState } from "react";
+import { useSettingsStore } from "@/stores/settings-store";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -41,9 +45,33 @@ export default function SettingsScreen() {
   const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
   const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
 
-  // Local settings state (will be persisted later)
-  const [hapticEnabled, setHapticEnabled] = useState(true);
-  const [streamingEnabled, setStreamingEnabled] = useState(true);
+  // Settings from store
+  const hapticEnabled = useSettingsStore(state => state.hapticEnabled);
+  const setHapticEnabled = useSettingsStore(state => state.setHapticEnabled);
+  const temperature = useSettingsStore(state => state.temperature);
+  const setTemperature = useSettingsStore(state => state.setTemperature);
+  const topP = useSettingsStore(state => state.topP);
+  const setTopP = useSettingsStore(state => state.setTopP);
+  const topK = useSettingsStore(state => state.topK);
+  const setTopK = useSettingsStore(state => state.setTopK);
+  const minP = useSettingsStore(state => state.minP);
+  const setMinP = useSettingsStore(state => state.setMinP);
+  const maxTokens = useSettingsStore(state => state.maxTokens);
+  const setMaxTokens = useSettingsStore(state => state.setMaxTokens);
+  const repeatPenalty = useSettingsStore(state => state.repeatPenalty);
+  const setRepeatPenalty = useSettingsStore(state => state.setRepeatPenalty);
+
+  // App version from Expo Constants
+  const appVersion = Constants.expoConfig?.version ?? "1.0.0";
+
+  // Advanced parameters modal state
+  const [showAdvancedModal, setShowAdvancedModal] = useState(false);
+  const [tempTemperature, setTempTemperature] = useState(temperature.toString());
+  const [tempTopP, setTempTopP] = useState(topP.toString());
+  const [tempTopK, setTempTopK] = useState(topK.toString());
+  const [tempMinP, setTempMinP] = useState(minP.toString());
+  const [tempMaxTokens, setTempMaxTokens] = useState(maxTokens.toString());
+  const [tempRepeatPenalty, setTempRepeatPenalty] = useState(repeatPenalty.toString());
 
   const handleClearAllChats = () => {
     if (conversations.length === 0) {
@@ -66,7 +94,68 @@ export default function SettingsScreen() {
   };
 
   const handleGitHub = () => {
-    Linking.openURL("https://github.com");
+    Linking.openURL("https://github.com/ilias363/localia");
+  };
+
+  const handleAdvancedParameters = () => {
+    setTempTemperature(temperature.toString());
+    setTempTopP(topP.toString());
+    setTempTopK(topK.toString());
+    setTempMinP(minP.toString());
+    setTempMaxTokens(maxTokens.toString());
+    setTempRepeatPenalty(repeatPenalty.toString());
+    setShowAdvancedModal(true);
+  };
+
+  const handleSaveAdvancedParameters = () => {
+    const newTemp = parseFloat(tempTemperature);
+    const newTopP = parseFloat(tempTopP);
+    const newTopK = parseInt(tempTopK, 10);
+    const newMinP = parseFloat(tempMinP);
+    const newMaxTokens = parseInt(tempMaxTokens, 10);
+    const newRepeatPenalty = parseFloat(tempRepeatPenalty);
+
+    if (isNaN(newTemp) || newTemp < 0 || newTemp > 2) {
+      Alert.alert("Invalid Temperature", "Temperature must be between 0 and 2.");
+      return;
+    }
+    if (isNaN(newTopP) || newTopP < 0 || newTopP > 1) {
+      Alert.alert("Invalid Top-P", "Top-P must be between 0 and 1.");
+      return;
+    }
+    if (isNaN(newTopK) || newTopK < 1 || newTopK > 100) {
+      Alert.alert("Invalid Top-K", "Top-K must be between 1 and 100.");
+      return;
+    }
+    if (isNaN(newMinP) || newMinP < 0 || newMinP > 1) {
+      Alert.alert("Invalid Min-P", "Min-P must be between 0 and 1.");
+      return;
+    }
+    if (isNaN(newMaxTokens) || newMaxTokens < 1 || newMaxTokens > 4096) {
+      Alert.alert("Invalid Max Tokens", "Max tokens must be between 1 and 4096.");
+      return;
+    }
+    if (isNaN(newRepeatPenalty) || newRepeatPenalty < 1 || newRepeatPenalty > 2) {
+      Alert.alert("Invalid Repeat Penalty", "Repeat penalty must be between 1 and 2.");
+      return;
+    }
+
+    setTemperature(newTemp);
+    setTopP(newTopP);
+    setTopK(newTopK);
+    setMinP(newMinP);
+    setMaxTokens(newMaxTokens);
+    setRepeatPenalty(newRepeatPenalty);
+    setShowAdvancedModal(false);
+  };
+
+  const handleResetAdvancedParameters = () => {
+    setTempTemperature("0.7");
+    setTempTopP("0.95");
+    setTempTopK("40");
+    setTempMinP("0.05");
+    setTempMaxTokens("512");
+    setTempRepeatPenalty("1.1");
   };
 
   const handleModelPress = () => {
@@ -123,34 +212,16 @@ export default function SettingsScreen() {
 
         <ThemedText style={styles.sectionTitle}>Generation</ThemedText>
         <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#0EA5E920" }]}>
-                <Ionicons name="text-outline" size={20} color="#0EA5E9" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Streaming</ThemedText>
-                <ThemedText style={styles.settingValue}>Show tokens as generated</ThemedText>
-              </View>
-            </View>
-            <Switch
-              value={streamingEnabled}
-              onValueChange={setStreamingEnabled}
-              trackColor={{ false: borderColor, true: tintColor + "80" }}
-              thumbColor={streamingEnabled ? tintColor : "#f4f3f4"}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.settingRow}>
+          <TouchableOpacity style={styles.settingRow} onPress={handleAdvancedParameters}>
             <View style={styles.settingInfo}>
               <View style={[styles.iconContainer, { backgroundColor: "#EC489920" }]}>
                 <Ionicons name="options-outline" size={20} color="#EC4899" />
               </View>
               <View style={styles.settingTextContainer}>
                 <ThemedText style={styles.settingLabel}>Advanced Parameters</ThemedText>
-                <ThemedText style={styles.settingValue}>Temperature, top-p, etc.</ThemedText>
+                <ThemedText style={styles.settingValue}>
+                  Temp: {temperature} · Top-P: {topP} · Max: {maxTokens}
+                </ThemedText>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={iconColor} style={{ opacity: 0.4 }} />
@@ -206,7 +277,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.settingTextContainer}>
                 <ThemedText style={styles.settingLabel}>Version</ThemedText>
-                <ThemedText style={styles.settingValue}>1.0.0</ThemedText>
+                <ThemedText style={styles.settingValue}>{appVersion}</ThemedText>
               </View>
             </View>
           </View>
@@ -232,6 +303,162 @@ export default function SettingsScreen() {
           Your conversations never leave your phone.
         </ThemedText>
       </ScrollView>
+
+      {/* Advanced Parameters Modal */}
+      <Modal
+        visible={showAdvancedModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAdvancedModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Advanced Parameters</ThemedText>
+              <TouchableOpacity onPress={() => setShowAdvancedModal(false)}>
+                <Ionicons name="close" size={24} color={iconColor} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Temperature</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Controls randomness (0 = deterministic, 2 = creative)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempTemperature}
+                  onChangeText={setTempTemperature}
+                  keyboardType="decimal-pad"
+                  placeholder="0.7"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Top-P (Nucleus Sampling)</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Cumulative probability threshold (0.1 = focused, 1.0 = diverse)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempTopP}
+                  onChangeText={setTempTopP}
+                  keyboardType="decimal-pad"
+                  placeholder="0.95"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Top-K</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Limit to top K tokens (1 = greedy, 100 = diverse)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempTopK}
+                  onChangeText={setTempTopK}
+                  keyboardType="number-pad"
+                  placeholder="40"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Min-P</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Minimum probability filter (0 = disabled, 0.1 = moderate)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempMinP}
+                  onChangeText={setTempMinP}
+                  keyboardType="decimal-pad"
+                  placeholder="0.05"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Max Tokens</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Maximum response length (1 - 4096)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempMaxTokens}
+                  onChangeText={setTempMaxTokens}
+                  keyboardType="number-pad"
+                  placeholder="512"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+
+              <View style={styles.parameterRow}>
+                <View style={styles.parameterInfo}>
+                  <ThemedText style={styles.parameterLabel}>Repeat Penalty</ThemedText>
+                  <ThemedText style={styles.parameterDescription}>
+                    Penalize repeated tokens (1 = none, 2 = strong)
+                  </ThemedText>
+                </View>
+                <TextInput
+                  style={[
+                    styles.parameterInput,
+                    { backgroundColor: borderColor + "40", color: iconColor },
+                  ]}
+                  value={tempRepeatPenalty}
+                  onChangeText={setTempRepeatPenalty}
+                  keyboardType="decimal-pad"
+                  placeholder="1.1"
+                  placeholderTextColor={iconColor + "60"}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.resetButton, { borderColor }]}
+                onPress={handleResetAdvancedParameters}
+              >
+                <ThemedText style={styles.resetButtonText}>Reset</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton, { backgroundColor: tintColor }]}
+                onPress={handleSaveAdvancedParameters}
+              >
+                <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -343,5 +570,75 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 32,
     lineHeight: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  modalScroll: {
+    marginBottom: 8,
+  },
+  parameterRow: {
+    marginBottom: 16,
+  },
+  parameterInfo: {
+    marginBottom: 8,
+  },
+  parameterLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  parameterDescription: {
+    fontSize: 13,
+    opacity: 0.5,
+    marginTop: 2,
+  },
+  parameterInput: {
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  resetButton: {
+    borderWidth: 1,
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  saveButton: {},
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
   },
 });

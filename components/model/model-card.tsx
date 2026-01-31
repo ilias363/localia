@@ -1,16 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  impactAsync,
-  ImpactFeedbackStyle,
-  notificationAsync,
-  NotificationFeedbackType,
-} from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
+import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import type { ModelInfo, ModelState } from "@/types";
 
@@ -36,6 +31,7 @@ export function ModelCard({
   isLast = false,
 }: ModelCardProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const { triggerMedium, triggerHeavy, triggerSuccess, triggerError } = useHaptics();
 
   const cardBackground = useThemeColor({}, "cardBackground");
   const tintColor = useThemeColor({}, "tint");
@@ -62,13 +58,13 @@ export function ModelCard({
   }));
 
   const handleDownload = async () => {
-    impactAsync(ImpactFeedbackStyle.Medium);
+    triggerMedium();
     setIsActionLoading(true);
     try {
       await onDownload();
-      notificationAsync(NotificationFeedbackType.Success);
+      triggerSuccess();
     } catch (error) {
-      notificationAsync(NotificationFeedbackType.Error);
+      triggerError();
       const message = error instanceof Error ? error.message : "Download failed";
       if (!message.toLowerCase().includes("cancel")) {
         Alert.alert("Download Error", message);
@@ -79,13 +75,13 @@ export function ModelCard({
   };
 
   const handleLoad = async () => {
-    impactAsync(ImpactFeedbackStyle.Medium);
+    triggerMedium();
     setIsActionLoading(true);
     try {
       await onLoad();
-      notificationAsync(NotificationFeedbackType.Success);
+      triggerSuccess();
     } catch (error) {
-      notificationAsync(NotificationFeedbackType.Error);
+      triggerError();
       const message = error instanceof Error ? error.message : "Failed to load model";
       Alert.alert("Load Error", message);
     } finally {
@@ -94,12 +90,12 @@ export function ModelCard({
   };
 
   const handleCancelDownload = () => {
-    impactAsync(ImpactFeedbackStyle.Medium);
+    triggerMedium();
     onCancelDownload();
   };
 
   const handleDelete = () => {
-    impactAsync(ImpactFeedbackStyle.Heavy);
+    triggerHeavy();
     Alert.alert(
       "Delete Model",
       `Are you sure you want to delete "${model.name}"? You'll need to download it again.`,
@@ -112,9 +108,9 @@ export function ModelCard({
             setIsActionLoading(true);
             try {
               await onDelete();
-              notificationAsync(NotificationFeedbackType.Success);
+              triggerSuccess();
             } catch (error) {
-              notificationAsync(NotificationFeedbackType.Error);
+              triggerError();
               const message = error instanceof Error ? error.message : "Failed to delete model";
               Alert.alert("Delete Error", message);
             } finally {

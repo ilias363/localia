@@ -1,6 +1,7 @@
 import { llmService } from "@/services/llm";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { generateTitle } from "@/utils";
 import { useRef, useState } from "react";
 
@@ -23,6 +24,14 @@ export function useChat() {
   const modelStates = useModelStore(state => state.modelStates);
   const activeModelId = useModelStore(state => state.activeModelId);
   const activeModelPath = useModelStore(state => state.activeModelPath);
+
+  // Settings from store
+  const temperature = useSettingsStore(state => state.temperature);
+  const topP = useSettingsStore(state => state.topP);
+  const topK = useSettingsStore(state => state.topK);
+  const minP = useSettingsStore(state => state.minP);
+  const maxTokens = useSettingsStore(state => state.maxTokens);
+  const repeatPenalty = useSettingsStore(state => state.repeatPenalty);
 
   // Derive values from reactive state
   const activeConversation = activeConversationId
@@ -96,6 +105,7 @@ export function useChat() {
           },
         },
         activeModel,
+        { temperature, topP, topK, minP, maxTokens, repeatPenalty },
       );
     } catch {
       setIsGenerating(false);

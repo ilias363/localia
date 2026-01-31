@@ -1,11 +1,11 @@
 // LLM Service - integrates with llama.rn for local model inference
 
 import { CHAT_TEMPLATES, DEFAULT_GENERATION_PARAMS } from "@/constants/models";
-import type { Message, ModelInfo, ModelLoadCallbacks, StreamCallbacks } from "@/types";
+import type { GenerationParams, Message, ModelInfo, ModelLoadCallbacks, StreamCallbacks } from "@/types";
 import { initLlama, releaseAllLlama, type LlamaContext } from "llama.rn";
 
 // Re-export types for convenience
-export type { Message, ModelLoadCallbacks, StreamCallbacks } from "@/types";
+export type { GenerationParams, Message, ModelLoadCallbacks, StreamCallbacks } from "@/types";
 
 // Singleton LLM context manager
 class LLMService {
@@ -99,6 +99,7 @@ class LLMService {
     messages: Message[],
     callbacks: StreamCallbacks,
     modelInfo?: ModelInfo,
+    params?: GenerationParams,
   ): Promise<void> {
     if (!this.context) {
       callbacks.onError?.(new Error("No model loaded"));
@@ -133,15 +134,23 @@ class LLMService {
       // Add assistant prefix for the response
       prompt += template.assistantPrefix;
 
+      // Use custom params if provided, otherwise use defaults
+      const temperature = params?.temperature ?? DEFAULT_GENERATION_PARAMS.temperature;
+      const topP = params?.topP ?? DEFAULT_GENERATION_PARAMS.top_p;
+      const topK = params?.topK ?? DEFAULT_GENERATION_PARAMS.top_k;
+      const minP = params?.minP ?? DEFAULT_GENERATION_PARAMS.min_p;
+      const maxTokens = params?.maxTokens ?? DEFAULT_GENERATION_PARAMS.n_predict;
+      const repeatPenalty = params?.repeatPenalty ?? DEFAULT_GENERATION_PARAMS.penalty_repeat;
+
       await this.context.completion(
         {
           prompt,
-          n_predict: DEFAULT_GENERATION_PARAMS.n_predict,
-          temperature: DEFAULT_GENERATION_PARAMS.temperature,
-          top_k: DEFAULT_GENERATION_PARAMS.top_k,
-          top_p: DEFAULT_GENERATION_PARAMS.top_p,
-          min_p: DEFAULT_GENERATION_PARAMS.min_p,
-          penalty_repeat: DEFAULT_GENERATION_PARAMS.penalty_repeat,
+          n_predict: maxTokens,
+          temperature,
+          top_k: topK,
+          top_p: topP,
+          min_p: minP,
+          penalty_repeat: repeatPenalty,
           penalty_last_n: DEFAULT_GENERATION_PARAMS.penalty_last_n,
           stop: [...template.stopTokens],
         },

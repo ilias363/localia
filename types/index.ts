@@ -23,6 +23,16 @@ export interface ModelLoadCallbacks {
   onError?: (error: Error) => void;
 }
 
+// Generation parameters that can be customized
+export interface GenerationParams {
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  minP?: number;
+  maxTokens?: number;
+  repeatPenalty?: number;
+}
+
 // ============================================================================
 // Model Types
 // ============================================================================

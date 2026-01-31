@@ -1,10 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  impactAsync,
-  ImpactFeedbackStyle,
-  notificationAsync,
-  NotificationFeedbackType,
-} from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -22,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ModelCard } from "@/components/model";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { llmService } from "@/services/llm";
 import { useModelStore } from "@/stores/model-store";
@@ -75,6 +70,7 @@ function sortModels(models: ModelInfo[], sort: SortState): ModelInfo[] {
 export default function ModelManagerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { triggerLight, triggerMedium, triggerSuccess, triggerError } = useHaptics();
   const tintColor = useThemeColor({}, "tint");
   const iconColor = useThemeColor({}, "text");
   const cardBackground = useThemeColor({}, "cardBackground");
@@ -143,7 +139,7 @@ export default function ModelManagerScreen() {
   }).length;
 
   const handleSortChange = (field: SortField) => {
-    impactAsync(ImpactFeedbackStyle.Light);
+    triggerLight();
     setSort(prev => {
       if (prev.field === field) {
         // Toggle direction
@@ -205,19 +201,19 @@ export default function ModelManagerScreen() {
   };
 
   const handleImport = async () => {
-    impactAsync(ImpactFeedbackStyle.Medium);
+    triggerMedium();
     setIsImporting(true);
     try {
       const importedModel = await importModel();
       if (importedModel) {
-        notificationAsync(NotificationFeedbackType.Success);
+        triggerSuccess();
         Alert.alert(
           "Model Imported",
           `"${importedModel.name}" has been imported successfully. You can now load it.`,
         );
       }
     } catch (error) {
-      notificationAsync(NotificationFeedbackType.Error);
+      triggerError();
       const message = error instanceof Error ? error.message : "Failed to import model";
       // Don't show alert for user cancellation
       if (!message.toLowerCase().includes("cancel")) {
