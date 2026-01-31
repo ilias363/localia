@@ -55,19 +55,22 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
           </ThemedText>
         )}
       </View>
-      {showStats ? (
-        <View style={styles.statsRow}>
-          <ThemedText style={[styles.statsText, { color: subtleTextColor }]}>
-            {message.stats!.tokensGenerated} tokens • {message.stats!.tokensPerSecond.toFixed(1)}{" "}
-            tok/s • {(message.stats!.generationTimeMs / 1000).toFixed(1)}s
-          </ThemedText>
-          <ThemedText style={styles.timestamp}>{formatTime(message.timestamp)}</ThemedText>
-        </View>
-      ) : (
-        <ThemedText style={styles.timestamp}>
+
+      {/* Metadata row - aligned based on message sender */}
+      <View style={[styles.metaRow, isUser ? styles.metaRowUser : styles.metaRowAssistant]}>
+        {showStats ? (
+          <>
+            <ThemedText style={[styles.statsText, { color: subtleTextColor }]}>
+              {message.stats!.tokensGenerated} tok • {message.stats!.tokensPerSecond.toFixed(1)}{" "}
+              tok/s • {(message.stats!.generationTimeMs / 1000).toFixed(1)}s
+            </ThemedText>
+            <ThemedText style={[styles.separator, { color: subtleTextColor }]}>•</ThemedText>
+          </>
+        ) : null}
+        <ThemedText style={[styles.timestamp, { color: subtleTextColor }]}>
           {isStreaming ? "Generating..." : formatTime(message.timestamp)}
         </ThemedText>
-      )}
+      </View>
     </View>
   );
 }
@@ -158,19 +161,26 @@ const styles = StyleSheet.create({
     fontWeight: "300",
     fontSize: 18,
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  metaRowUser: {
+    justifyContent: "flex-end",
+  },
+  metaRowAssistant: {
+    justifyContent: "flex-start",
+  },
   timestamp: {
     fontSize: 11,
-    opacity: 0.5,
-    marginHorizontal: 4,
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 4,
-    marginHorizontal: 4,
   },
   statsText: {
+    fontSize: 11,
+  },
+  separator: {
     fontSize: 11,
   },
   dotsContainer: {
