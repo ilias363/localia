@@ -1,6 +1,7 @@
 import { llmService } from "@/services/llm";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
+import { generateTitle } from "@/utils";
 import { useRef, useState } from "react";
 
 export function useChat() {
@@ -15,6 +16,7 @@ export function useChat() {
   const addMessage = useConversationStore(state => state.addMessage);
   const updateMessage = useConversationStore(state => state.updateMessage);
   const createConversation = useConversationStore(state => state.createConversation);
+  const updateConversationTitle = useConversationStore(state => state.updateConversationTitle);
 
   // Reactive model state
   const models = useModelStore(state => state.models);
@@ -40,9 +42,11 @@ export function useChat() {
     }
 
     let conversationId = activeConversationId;
+    let isNewConversation = false;
     if (!conversationId) {
       const newConversation = createConversation();
       conversationId = newConversation.id;
+      isNewConversation = true;
     }
 
     // Add user message
@@ -50,6 +54,11 @@ export function useChat() {
       role: "user",
       content,
     });
+
+    // Update conversation title based on first message
+    if (isNewConversation || messages.length === 0) {
+      updateConversationTitle(conversationId, generateTitle(content));
+    }
 
     // Add empty assistant message for streaming
     const assistantMessage = addMessage(conversationId, {
