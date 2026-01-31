@@ -1,7 +1,7 @@
 import { getDocumentAsync } from "expo-document-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, FlatList, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useShallow } from "zustand/shallow";
 
@@ -21,7 +21,18 @@ import { LoadingOverlay, SearchBar } from "@/components/ui";
 import { useHaptics } from "@/hooks/use-haptics";
 import { llmService } from "@/services/llm";
 import { useModelStore } from "@/stores/model-store";
-import type { ModelInfo } from "@/types";
+import type { ModelInfo, ModelState } from "@/types";
+
+// Define list item types for the FlatList
+type ListItem =
+  | { type: "import-card" }
+  | { type: "search-bar" }
+  | { type: "downloaded-header"; count: number }
+  | { type: "model"; model: ModelInfo; state: ModelState; isActive: boolean; isLast: boolean }
+  | { type: "available-header"; count: number }
+  | { type: "sort-options" }
+  | { type: "empty-search"; query: string }
+  | { type: "footer" };
 
 function sortModels(models: ModelInfo[], sort: SortState): ModelInfo[] {
   return [...models].sort((a, b) => {
@@ -127,6 +138,117 @@ export default function ModelManagerScreen() {
     const state = getModelState(m.id);
     return state.status === "downloaded" || state.status === "ready" || state.status === "loading";
   }).length;
+
+  // Build flat list data for virtualization
+  const listData: ListItem[] = [{ type: "import-card" }, { type: "search-bar" }];
+
+  if (downloadedModels.length > 0) {
+    listData.push({ type: "downloaded-header", count: downloadedModels.length });
+    downloadedModels.forEach((model, index) => {
+      listData.push({
+        type: "model",
+        model,
+        state: getModelState(model.id),
+        isActive: activeModel?.id === model.id,
+        isLast: index === downloadedModels.length - 1,
+      });
+    });
+  }
+
+  if (sortedAvailableModels.length > 0) {
+    listData.push({ type: "available-header", count: sortedAvailableModels.length });
+    listData.push({ type: "sort-options" });
+    sortedAvailableModels.forEach((model, index) => {
+      listData.push({
+        type: "model",
+        model,
+        state: getModelState(model.id),
+        isActive: activeModel?.id === model.id,
+        isLast: index === sortedAvailableModels.length - 1,
+      });
+    });
+  }
+
+  if (searchQuery && filteredModels.length === 0) {
+    listData.push({ type: "empty-search", query: searchQuery });
+  }
+
+  listData.push({ type: "footer" });
+
+  // Get key for list items
+  const getItemKey = (item: ListItem, index: number): string => {
+    if (item.type === "model") return `model-${item.model.id}`;
+    return `${item.type}-${index}`;
+  };
+
+  // Render list items
+  const renderItem = ({ item }: { item: ListItem }) => {
+    switch (item.type) {
+      case "import-card":
+        return (
+          <>
+            <ImportModelCard onPress={handlePickFile} />
+            <View style={styles.spacer} />
+          </>
+        );
+      case "search-bar":
+        return (
+          <>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search models..."
+            />
+            <View style={styles.spacerLarge} />
+          </>
+        );
+      case "downloaded-header":
+        return (
+          <ModelSectionHeader
+            icon="folder-open-outline"
+            title="Your Models"
+            subtitle="Downloaded and ready to use"
+          />
+        );
+      case "available-header":
+        return (
+          <>
+            <View style={styles.spacer} />
+            <ModelSectionHeader
+              icon="cloud-download-outline"
+              title="Available Models"
+              subtitle={`${item.count} models available`}
+            />
+          </>
+        );
+      case "sort-options":
+        return (
+          <>
+            <SortOptions sort={sort} onSortChange={handleSortChange} />
+            <View style={styles.spacerSmall} />
+          </>
+        );
+      case "model":
+        return (
+          <ModelCard
+            model={item.model}
+            state={item.state}
+            isActive={item.isActive}
+            onDownload={() => handleDownload(item.model.id)}
+            onCancelDownload={() => handleCancelDownload(item.model.id)}
+            onDelete={() => handleDelete(item.model.id)}
+            onLoad={() => handleLoad(item.model.id)}
+            isLast={item.isLast}
+          />
+        );
+      case "empty-search":
+        return <EmptySearchResults query={item.query} />;
+      case "footer":
+        return <ModelLibraryFooter />;
+      default:
+        return null;
+    }
+  };
 
   const handleSortChange = (field: SortField) => {
     setSort(prev => {
@@ -278,84 +400,18 @@ export default function ModelManagerScreen() {
         />
       </View>
 
-      <ScrollView
+      <FlatList
+        data={listData}
+        renderItem={renderItem}
+        keyExtractor={getItemKey}
         style={styles.content}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
-      >
-        {/* Import Section */}
-        <ImportModelCard onPress={handlePickFile} />
-        <View style={styles.spacer} />
-
-        {/* Search Bar */}
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search models..."
-        />
-        <View style={styles.spacerLarge} />
-
-        {/* Your Models Section */}
-        {downloadedModels.length > 0 && (
-          <>
-            <ModelSectionHeader
-              icon="folder-open-outline"
-              title="Your Models"
-              subtitle="Downloaded and ready to use"
-            />
-
-            {downloadedModels.map((model, index) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                state={getModelState(model.id)}
-                isActive={activeModel?.id === model.id}
-                onDownload={() => handleDownload(model.id)}
-                onCancelDownload={() => handleCancelDownload(model.id)}
-                onDelete={() => handleDelete(model.id)}
-                onLoad={() => handleLoad(model.id)}
-                isLast={index === downloadedModels.length - 1}
-              />
-            ))}
-
-            <View style={styles.spacer} />
-          </>
-        )}
-
-        {/* Available Models Section with Sort */}
-        {sortedAvailableModels.length > 0 && (
-          <>
-            <ModelSectionHeader
-              icon="cloud-download-outline"
-              title="Available Models"
-              subtitle={`${sortedAvailableModels.length} models available`}
-            />
-
-            <SortOptions sort={sort} onSortChange={handleSortChange} />
-            <View style={styles.spacerSmall} />
-
-            {sortedAvailableModels.map((model, index) => (
-              <ModelCard
-                key={model.id}
-                model={model}
-                state={getModelState(model.id)}
-                isActive={activeModel?.id === model.id}
-                onDownload={() => handleDownload(model.id)}
-                onCancelDownload={() => handleCancelDownload(model.id)}
-                onDelete={() => handleDelete(model.id)}
-                onLoad={() => handleLoad(model.id)}
-                isLast={index === sortedAvailableModels.length - 1}
-              />
-            ))}
-          </>
-        )}
-
-        {/* No results */}
-        {searchQuery && filteredModels.length === 0 && <EmptySearchResults query={searchQuery} />}
-
-        {/* Info Footer */}
-        <ModelLibraryFooter />
-      </ScrollView>
+        removeClippedSubviews={true}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+      />
 
       {/* Loading Overlay */}
       <LoadingOverlay
