@@ -1,8 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 interface EmptyStateProps {
   modelLoaded?: boolean;
@@ -10,30 +9,6 @@ interface EmptyStateProps {
 
 export function EmptyState({ modelLoaded = true }: EmptyStateProps) {
   const iconColor = useThemeColor({}, "tint");
-  const warningColor = useThemeColor({}, "warning");
-  const router = useRouter();
-
-  if (!modelLoaded) {
-    return (
-      <View style={styles.container}>
-        <View style={[styles.iconContainer, { backgroundColor: warningColor + "20" }]}>
-          <Ionicons name="cube-outline" size={48} color={warningColor} />
-        </View>
-        <ThemedText style={styles.title}>No Model Loaded</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Download or import a language model to start chatting with your private AI assistant.
-        </ThemedText>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: warningColor }]}
-          onPress={() => router.push("/model-manager" as const as "/settings")}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="cloud-download-outline" size={20} color="#fff" />
-          <ThemedText style={styles.actionButtonText}>Get a Model</ThemedText>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
