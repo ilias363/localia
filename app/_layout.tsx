@@ -24,6 +24,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="settings" options={{ animation: "none" }} />
           <Stack.Screen name="model-manager" options={{ animation: "slide_from_right" }} />
+          <Stack.Screen name="import-model" options={{ animation: "slide_from_bottom" }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

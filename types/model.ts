@@ -1,5 +1,18 @@
 // Model-related type definitions
 
+export interface CustomModelInfo {
+  name: string;
+  provider: string;
+  description: string;
+  quantization: string;
+  contextLength: number;
+  chatTemplate: string;
+  // File info for import
+  fileUri: string;
+  fileName: string;
+  fileSize?: number;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;
@@ -11,7 +24,7 @@ export interface ModelInfo {
   fileName: string;
   quantization: string;
   contextLength: number;
-  chatTemplate?: string; // Chat template format
+  chatTemplate: string; // Chat template format
 }
 
 export type ModelStatus =

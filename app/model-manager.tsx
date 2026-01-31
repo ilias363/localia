@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { getDocumentAsync } from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -200,27 +201,80 @@ export default function ModelManagerScreen() {
     }
   };
 
-  const handleImport = async () => {
+  const handlePickFile = async () => {
     triggerMedium();
-    setIsImporting(true);
     try {
-      const importedModel = await importModel();
-      if (importedModel) {
-        triggerSuccess();
-        Alert.alert(
-          "Model Imported",
-          `"${importedModel.name}" has been imported successfully. You can now load it.`,
-        );
+      const result = await getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) {
+        return;
       }
+
+      const asset = result.assets[0];
+
+      // Validate file extension
+      if (!asset.name.toLowerCase().endsWith(".gguf")) {
+        Alert.alert("Error", "Please select a GGUF model file");
+        return;
+      }
+
+      // Check if this file matches a supported model
+      const existingModel = models.find(m => m.fileName === asset.name);
+      if (existingModel) {
+        // Model is already in the list, just import the file directly
+        Alert.alert(
+          "Supported Model Detected",
+          `"${existingModel.name}" is already in your model library. Would you like to add the file?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Add File",
+              onPress: async () => {
+                setIsImporting(true);
+                try {
+                  await importModel({
+                    name: existingModel.name,
+                    provider: existingModel.provider,
+                    description: existingModel.description,
+                    quantization: existingModel.quantization,
+                    contextLength: existingModel.contextLength,
+                    chatTemplate: existingModel.chatTemplate,
+                    fileUri: asset.uri,
+                    fileName: asset.name,
+                    fileSize: asset.size,
+                  });
+                  triggerSuccess();
+                  Alert.alert("Success", `"${existingModel.name}" has been added.`);
+                } catch (error) {
+                  triggerError();
+                  const message = error instanceof Error ? error.message : "Failed to import";
+                  Alert.alert("Error", message);
+                } finally {
+                  setIsImporting(false);
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      // Navigate to import screen with file info
+      router.push({
+        pathname: "/import-model" as const,
+        params: {
+          fileUri: asset.uri,
+          fileName: asset.name,
+          fileSize: asset.size?.toString(),
+        },
+      } as any);
     } catch (error) {
       triggerError();
-      const message = error instanceof Error ? error.message : "Failed to import model";
-      // Don't show alert for user cancellation
-      if (!message.toLowerCase().includes("cancel")) {
-        Alert.alert("Import Error", message);
-      }
-    } finally {
-      setIsImporting(false);
+      const message = error instanceof Error ? error.message : "Failed to pick file";
+      Alert.alert("Error", message);
     }
   };
 
@@ -278,7 +332,7 @@ export default function ModelManagerScreen() {
         {/* Import Section */}
         <TouchableOpacity
           style={[styles.importCard, { borderColor: tintColor + "40" }]}
-          onPress={handleImport}
+          onPress={handlePickFile}
           disabled={isImporting}
           activeOpacity={0.7}
         >

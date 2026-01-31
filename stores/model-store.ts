@@ -1,11 +1,10 @@
 import { AVAILABLE_MODELS, CUSTOM_MODEL_PREFIX } from "@/constants/models";
-import type { ActiveModel, ModelInfo, ModelState } from "@/types";
+import type { ActiveModel, CustomModelInfo, ModelInfo, ModelState } from "@/types";
 import {
   completeHandler,
   createDownloadTask,
   type DownloadTask,
 } from "@kesha-antonov/react-native-background-downloader";
-import { getDocumentAsync } from "expo-document-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import { create } from "zustand";
 import { createJSONStorage, persist, subscribeWithSelector } from "zustand/middleware";
@@ -57,7 +56,7 @@ interface ModelStoreActions {
   deleteModel: (modelId: string) => Promise<void>;
   loadModel: (modelId: string) => Promise<void>;
   unloadModel: () => Promise<void>;
-  importModel: () => Promise<ModelInfo | null>;
+  importModel: (customInfo: CustomModelInfo) => Promise<ModelInfo | null>;
 
   // Initialization
   initialize: () => void;
@@ -449,37 +448,21 @@ export const useModelStore = create<ModelStore>()(
           }
         },
 
-        importModel: async () => {
+        importModel: async (customInfo: CustomModelInfo) => {
           const { models, updateModelState } = get();
 
           try {
-            const result = await getDocumentAsync({
-              type: "*/*",
-              copyToCacheDirectory: true,
-            });
-
-            if (result.canceled || !result.assets?.[0]) {
-              return null;
-            }
-
-            const asset = result.assets[0];
-
-            // Validate file extension
-            if (!asset.name.toLowerCase().endsWith(".gguf")) {
-              throw new Error("Please select a GGUF model file");
-            }
-
             ensureModelsDirectory();
 
-            const destFile = getModelFilePath(asset.name);
+            const destFile = getModelFilePath(customInfo.fileName);
 
             // Check if a predefined model with this filename already exists
             // If so, use that model instead of creating a duplicate
-            const existingModel = models.find(m => m.fileName === asset.name);
+            const existingModel = models.find(m => m.fileName === customInfo.fileName);
             if (existingModel) {
               // Copy file if it doesn't exist yet
               if (!destFile.exists) {
-                const sourceFile = new File(asset.uri);
+                const sourceFile = new File(customInfo.fileUri);
                 sourceFile.copy(destFile);
                 // Clean up source file from cache
                 try {
@@ -498,7 +481,7 @@ export const useModelStore = create<ModelStore>()(
             }
 
             // Copy file to app's documents directory
-            const sourceFile = new File(asset.uri);
+            const sourceFile = new File(customInfo.fileUri);
             sourceFile.copy(destFile);
             // Clean up source file from cache
             try {
@@ -507,18 +490,19 @@ export const useModelStore = create<ModelStore>()(
               // Ignore cleanup errors
             }
 
-            // Create a custom model entry (only for truly new models)
+            // Create a custom model entry with user-provided info
             const customModel: ModelInfo = {
               id: `${CUSTOM_MODEL_PREFIX}${Date.now()}`,
-              name: asset.name.replace(".gguf", ""),
-              provider: "Custom",
-              description: "Imported GGUF model",
-              size: asset.size ? formatBytes(asset.size) : "Unknown",
-              sizeBytes: asset.size ?? 0,
+              name: customInfo.name,
+              provider: customInfo.provider,
+              description: customInfo.description,
+              size: customInfo.fileSize ? formatBytes(customInfo.fileSize) : "Unknown",
+              sizeBytes: customInfo.fileSize ?? 0,
               downloadUrl: "",
-              fileName: asset.name,
-              quantization: "Unknown",
-              contextLength: 2048,
+              fileName: customInfo.fileName,
+              quantization: customInfo.quantization,
+              contextLength: customInfo.contextLength,
+              chatTemplate: customInfo.chatTemplate,
             };
 
             set(state => ({

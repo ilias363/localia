@@ -506,3 +506,8 @@ export const CHAT_TEMPLATES = {
     stopTokens: ["<end_of_turn>", "<start_of_turn>"],
   },
 } as const;
+
+// Export supported chat template keys for UI
+export const SUPPORTED_CHAT_TEMPLATES = Object.keys(
+  CHAT_TEMPLATES,
+) as (keyof typeof CHAT_TEMPLATES)[];
