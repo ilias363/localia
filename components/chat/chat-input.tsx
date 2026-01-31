@@ -1,3 +1,4 @@
+import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -25,6 +26,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [text, setText] = useState("");
   const router = useRouter();
+  const { triggerLight, triggerMedium } = useHaptics();
 
   const backgroundColor = useThemeColor({}, "inputBackground");
   const inputBackgroundColor = useThemeColor({}, "inputFieldBackground");
@@ -38,9 +40,15 @@ export function ChatInput({
   const handleSend = () => {
     const trimmed = text.trim();
     if (trimmed && !disabled && modelLoaded) {
+      triggerLight();
       onSend(trimmed);
       setText("");
     }
+  };
+
+  const handleStop = () => {
+    triggerMedium();
+    onStop?.();
   };
 
   const canSend = text.trim().length > 0 && !disabled && modelLoaded;
@@ -87,7 +95,7 @@ export function ChatInput({
         {isGenerating ? (
           <TouchableOpacity
             style={[styles.sendButton, { backgroundColor: dangerColor }]}
-            onPress={onStop}
+            onPress={handleStop}
             activeOpacity={0.7}
           >
             <Ionicons name="stop" size={16} color="#ffffff" />

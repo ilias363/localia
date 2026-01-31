@@ -14,6 +14,7 @@ import {
 import type { EdgeInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useConversationStore } from "@/stores/conversation-store";
 import type { Conversation } from "@/types";
@@ -30,6 +31,7 @@ export function SideDrawer({ visible, onClose, insets }: SideDrawerProps) {
   const router = useRouter();
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+  const { triggerLight, triggerMedium, triggerWarning } = useHaptics();
 
   const backgroundColor = useThemeColor({}, "background");
   const borderColor = useThemeColor({}, "border");
@@ -57,27 +59,34 @@ export function SideDrawer({ visible, onClose, insets }: SideDrawerProps) {
   }, [visible, slideAnim, backdropAnim]);
 
   const handleNewChat = () => {
+    triggerLight();
     setActiveConversation(null);
     onClose();
   };
 
   const handleSelectConversation = (id: string) => {
+    triggerLight();
     setActiveConversation(id);
     onClose();
   };
 
   const handleSettings = () => {
+    triggerLight();
     onClose();
     router.push("/settings");
   };
 
   const handleDeleteConversation = (id: string) => {
+    triggerWarning();
     Alert.alert("Delete Conversation", "Are you sure you want to delete this conversation?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => deleteConversation(id),
+        onPress: () => {
+          triggerMedium();
+          deleteConversation(id);
+        },
       },
     ]);
   };

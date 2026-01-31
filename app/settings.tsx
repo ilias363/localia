@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
@@ -25,6 +26,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { triggerLight, triggerMedium, triggerSuccess, triggerWarning } = useHaptics();
   const borderColor = useThemeColor({}, "border");
   const cardBackground = useThemeColor({}, "cardBackground");
   const iconColor = useThemeColor({}, "text");
@@ -79,6 +81,7 @@ export default function SettingsScreen() {
       return;
     }
 
+    triggerWarning();
     Alert.alert(
       "Clear All Conversations",
       `Are you sure you want to delete all ${conversations.length} conversation${conversations.length > 1 ? "s" : ""}? This cannot be undone.`,
@@ -87,17 +90,22 @@ export default function SettingsScreen() {
         {
           text: "Clear All",
           style: "destructive",
-          onPress: () => clearAllConversations(),
+          onPress: () => {
+            triggerMedium();
+            clearAllConversations();
+          },
         },
       ],
     );
   };
 
   const handleGitHub = () => {
+    triggerLight();
     Linking.openURL("https://github.com/ilias363/localia");
   };
 
   const handleAdvancedParameters = () => {
+    triggerLight();
     setTempTemperature(temperature.toString());
     setTempTopP(topP.toString());
     setTempTopK(topK.toString());
@@ -146,10 +154,12 @@ export default function SettingsScreen() {
     setMinP(newMinP);
     setMaxTokens(newMaxTokens);
     setRepeatPenalty(newRepeatPenalty);
+    triggerSuccess();
     setShowAdvancedModal(false);
   };
 
   const handleResetAdvancedParameters = () => {
+    triggerMedium();
     setTempTemperature("0.7");
     setTempTopP("0.95");
     setTempTopK("40");
@@ -159,13 +169,19 @@ export default function SettingsScreen() {
   };
 
   const handleModelPress = () => {
+    triggerLight();
     router.push("/model-manager" as const as "/settings");
+  };
+
+  const handleBack = () => {
+    triggerLight();
+    router.back();
   };
 
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: borderColor }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color={tintColor} />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Settings</ThemedText>
