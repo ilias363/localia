@@ -3,7 +3,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-nat
 
 import { ThemedText } from "@/components/themed-text";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 import type { Conversation } from "@/types";
 
 interface ConversationListProps {
@@ -44,8 +44,7 @@ export function ConversationList({
   onDeleteConversation,
 }: ConversationListProps) {
   const { triggerLight, triggerMedium, triggerWarning } = useHaptics();
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const textColor = useThemeColor({}, "text");
+  const { cardBackground, text: textColor } = useAllThemeColors();
 
   const groupedConversations = groupConversationsByDate(conversations);
 

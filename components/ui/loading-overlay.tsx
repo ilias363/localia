@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface LoadingOverlayProps {
   visible: boolean;
@@ -10,8 +10,7 @@ interface LoadingOverlayProps {
 }
 
 export function LoadingOverlay({ visible, title = "Loading...", subtitle }: LoadingOverlayProps) {
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const tintColor = useThemeColor({}, "tint");
+  const { cardBackground, tint: tintColor } = useAllThemeColors();
 
   if (!visible) return null;
 

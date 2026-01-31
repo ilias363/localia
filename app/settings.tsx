@@ -4,13 +4,14 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useShallow } from "zustand/shallow";
 
 import { AdvancedParametersModal, SettingRow, SettingToggle } from "@/components/settings";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Card, Divider, SectionTitle } from "@/components/ui";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -19,42 +20,69 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { triggerLight, triggerMedium, triggerSuccess, triggerWarning } = useHaptics();
-  const borderColor = useThemeColor({}, "border");
-  const tintColor = useThemeColor({}, "tint");
-  const iconColor = useThemeColor({}, "text");
-  const dangerColor = useThemeColor({}, "danger");
-  const successColor = useThemeColor({}, "success");
-  const warningColor = useThemeColor({}, "warning");
 
+  // Get all colors at once
+  const colors = useAllThemeColors();
+  const {
+    border: borderColor,
+    tint: tintColor,
+    text: iconColor,
+    danger: dangerColor,
+    success: successColor,
+    warning: warningColor,
+  } = colors;
+
+  // Consolidate conversation store subscriptions
   const conversations = useConversationStore(state => state.conversations);
-  const clearAllConversations = useConversationStore(state => state.clearAllConversations);
+  const { clearAllConversations } = useConversationStore.getState();
 
-  // Subscribe to reactive state values for proper re-renders
-  const models = useModelStore(state => state.models);
-  const activeModelId = useModelStore(state => state.activeModelId);
-  const modelStates = useModelStore(state => state.modelStates);
+  // Consolidate model store subscriptions with useShallow
+  const { models, activeModelId, modelStates } = useModelStore(
+    useShallow(state => ({
+      models: state.models,
+      activeModelId: state.activeModelId,
+      modelStates: state.modelStates,
+    })),
+  );
 
   // Derive computed values
   const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
   const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
 
-  // Settings from store
-  const hapticEnabled = useSettingsStore(state => state.hapticEnabled);
-  const setHapticEnabled = useSettingsStore(state => state.setHapticEnabled);
-  const statsForNerdsEnabled = useSettingsStore(state => state.statsForNerdsEnabled);
-  const setStatsForNerdsEnabled = useSettingsStore(state => state.setStatsForNerdsEnabled);
-  const temperature = useSettingsStore(state => state.temperature);
-  const setTemperature = useSettingsStore(state => state.setTemperature);
-  const topP = useSettingsStore(state => state.topP);
-  const setTopP = useSettingsStore(state => state.setTopP);
-  const topK = useSettingsStore(state => state.topK);
-  const setTopK = useSettingsStore(state => state.setTopK);
-  const minP = useSettingsStore(state => state.minP);
-  const setMinP = useSettingsStore(state => state.setMinP);
-  const maxTokens = useSettingsStore(state => state.maxTokens);
-  const setMaxTokens = useSettingsStore(state => state.setMaxTokens);
-  const repeatPenalty = useSettingsStore(state => state.repeatPenalty);
-  const setRepeatPenalty = useSettingsStore(state => state.setRepeatPenalty);
+  // Consolidate settings store subscriptions with useShallow
+  const {
+    hapticEnabled,
+    statsForNerdsEnabled,
+    temperature,
+    topP,
+    topK,
+    minP,
+    maxTokens,
+    repeatPenalty,
+  } = useSettingsStore(
+    useShallow(state => ({
+      hapticEnabled: state.hapticEnabled,
+      statsForNerdsEnabled: state.statsForNerdsEnabled,
+      temperature: state.temperature,
+      topP: state.topP,
+      topK: state.topK,
+      minP: state.minP,
+      maxTokens: state.maxTokens,
+      repeatPenalty: state.repeatPenalty,
+    })),
+  );
+
+  // Get setters from getState (they don't need to trigger re-renders)
+  const {
+    setHapticEnabled,
+    setStatsForNerdsEnabled,
+    setTemperature,
+    setTopP,
+    setTopK,
+    setMinP,
+    setMaxTokens,
+    setRepeatPenalty,
+  } = useSettingsStore.getState();
 
   // App version from Expo Constants
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";

@@ -2,15 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface DrawerFooterProps {
   onSettings: () => void;
 }
 
 export function DrawerFooter({ onSettings }: DrawerFooterProps) {
-  const borderColor = useThemeColor({}, "border");
-  const textColor = useThemeColor({}, "text");
+  const { border: borderColor, text: textColor } = useAllThemeColors();
 
   return (
     <View style={[styles.bottomActions, { borderTopColor: borderColor }]}>

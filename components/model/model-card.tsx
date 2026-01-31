@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 
 import { ThemedText } from "@/components/themed-text";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 import type { ModelInfo, ModelState } from "@/types";
 
 interface ModelCardProps {
@@ -33,12 +33,14 @@ export function ModelCard({
   const [isActionLoading, setIsActionLoading] = useState(false);
   const { triggerMedium, triggerHeavy, triggerSuccess, triggerError } = useHaptics();
 
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const tintColor = useThemeColor({}, "tint");
-  const successColor = useThemeColor({}, "success");
-  const warningColor = useThemeColor({}, "warning");
-  const dangerColor = useThemeColor({}, "danger");
-  const textColor = useThemeColor({}, "text");
+  // Get all colors at once to reduce redundant hook calls
+  const colors = useAllThemeColors();
+  const cardBackground = colors.cardBackground;
+  const tintColor = colors.tint;
+  const successColor = colors.success;
+  const warningColor = colors.warning;
+  const dangerColor = colors.danger;
+  const textColor = colors.text;
 
   const progressWidth = useSharedValue(0);
 

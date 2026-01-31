@@ -3,14 +3,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface ImportModelCardProps {
   onPress: () => void;
 }
 
 export function ImportModelCard({ onPress }: ImportModelCardProps) {
-  const tintColor = useThemeColor({}, "tint");
+  const { tint: tintColor } = useAllThemeColors();
 
   return (
     <TouchableOpacity

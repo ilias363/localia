@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface SearchBarProps {
   value: string;
@@ -10,9 +10,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ value, onChangeText, placeholder = "Search..." }: SearchBarProps) {
-  const iconColor = useThemeColor({}, "text");
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const borderColor = useThemeColor({}, "border");
+  const { text: iconColor, cardBackground, border: borderColor } = useAllThemeColors();
 
   return (
     <View style={[styles.container, { backgroundColor: cardBackground, borderColor }]}>

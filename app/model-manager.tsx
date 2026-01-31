@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useShallow } from "zustand/shallow";
 
 import {
   EmptySearchResults,
@@ -57,18 +58,27 @@ export default function ModelManagerScreen() {
   const insets = useSafeAreaInsets();
   const { triggerMedium, triggerSuccess, triggerError } = useHaptics();
 
-  const models = useModelStore(state => state.models);
-  const modelStates = useModelStore(state => state.modelStates);
-  const activeModelId = useModelStore(state => state.activeModelId);
-  const downloadModel = useModelStore(state => state.downloadModel);
-  const cancelDownload = useModelStore(state => state.cancelDownload);
-  const deleteModel = useModelStore(state => state.deleteModel);
-  const loadModel = useModelStore(state => state.loadModel);
-  const unloadModel = useModelStore(state => state.unloadModel);
-  const importModel = useModelStore(state => state.importModel);
-  const setModelError = useModelStore(state => state.setModelError);
-  const setModelReady = useModelStore(state => state.setModelReady);
-  const updateModelState = useModelStore(state => state.updateModelState);
+  // Consolidate store subscriptions for better performance
+  const { models, modelStates, activeModelId } = useModelStore(
+    useShallow(state => ({
+      models: state.models,
+      modelStates: state.modelStates,
+      activeModelId: state.activeModelId,
+    })),
+  );
+
+  // Get actions separately (they don't cause re-renders)
+  const {
+    downloadModel,
+    cancelDownload,
+    deleteModel,
+    loadModel,
+    unloadModel,
+    importModel,
+    setModelError,
+    setModelReady,
+    updateModelState,
+  } = useModelStore.getState();
 
   // Derive active model from reactive state
   const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface ModelSectionHeaderProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -11,7 +11,7 @@ interface ModelSectionHeaderProps {
 }
 
 export function ModelSectionHeader({ icon, title, subtitle }: ModelSectionHeaderProps) {
-  const tintColor = useThemeColor({}, "tint");
+  const { tint: tintColor } = useAllThemeColors();
 
   return (
     <View style={styles.sectionHeader}>

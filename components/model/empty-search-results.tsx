@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface EmptySearchResultsProps {
   query?: string;
 }
 
 export function EmptySearchResults({ query }: EmptySearchResultsProps) {
-  const iconColor = useThemeColor({}, "text");
+  const { text: iconColor } = useAllThemeColors();
 
   return (
     <View style={styles.noResults}>

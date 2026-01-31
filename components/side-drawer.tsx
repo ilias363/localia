@@ -2,10 +2,11 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, Pressable, StyleSheet, View } from "react-native";
 import type { EdgeInsets } from "react-native-safe-area-context";
+import { useShallow } from "zustand/shallow";
 
 import { ConversationList, DrawerFooter, DrawerHeader } from "@/components/drawer";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 import { useConversationStore } from "@/stores/conversation-store";
 
 const DRAWER_WIDTH = Dimensions.get("window").width * 0.8;
@@ -22,12 +23,18 @@ export function SideDrawer({ visible, onClose, insets }: SideDrawerProps) {
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const { triggerLight } = useHaptics();
 
-  const backgroundColor = useThemeColor({}, "background");
+  const { background: backgroundColor } = useAllThemeColors();
 
-  const conversations = useConversationStore(state => state.conversations);
-  const activeConversationId = useConversationStore(state => state.activeConversationId);
-  const deleteConversation = useConversationStore(state => state.deleteConversation);
-  const setActiveConversation = useConversationStore(state => state.setActiveConversation);
+  // Consolidate conversation store subscriptions with useShallow
+  const { conversations, activeConversationId } = useConversationStore(
+    useShallow(state => ({
+      conversations: state.conversations,
+      activeConversationId: state.activeConversationId,
+    })),
+  );
+
+  // Get actions from getState (they don't trigger re-renders)
+  const { deleteConversation, setActiveConversation } = useConversationStore.getState();
 
   useEffect(() => {
     Animated.parallel([

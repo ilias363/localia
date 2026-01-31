@@ -4,6 +4,7 @@ import { useModelStore } from "@/stores/model-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { generateTitle } from "@/utils";
 import { useRef, useState } from "react";
+import { useShallow } from "zustand/shallow";
 
 export function useChat() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -11,28 +12,44 @@ export function useChat() {
   const abortRef = useRef(false);
   const streamingContentRef = useRef("");
 
-  // Reactive conversation state
-  const conversations = useConversationStore(state => state.conversations);
-  const activeConversationId = useConversationStore(state => state.activeConversationId);
-  const addMessage = useConversationStore(state => state.addMessage);
-  const updateMessage = useConversationStore(state => state.updateMessage);
-  const updateMessageStats = useConversationStore(state => state.updateMessageStats);
-  const createConversation = useConversationStore(state => state.createConversation);
-  const updateConversationTitle = useConversationStore(state => state.updateConversationTitle);
+  // Consolidate conversation store subscriptions with useShallow
+  const { conversations, activeConversationId } = useConversationStore(
+    useShallow(state => ({
+      conversations: state.conversations,
+      activeConversationId: state.activeConversationId,
+    })),
+  );
 
-  // Reactive model state
-  const models = useModelStore(state => state.models);
-  const modelStates = useModelStore(state => state.modelStates);
-  const activeModelId = useModelStore(state => state.activeModelId);
-  const activeModelPath = useModelStore(state => state.activeModelPath);
+  // Actions don't trigger re-renders, use getState
+  const {
+    addMessage,
+    updateMessage,
+    updateMessageStats,
+    createConversation,
+    updateConversationTitle,
+  } = useConversationStore.getState();
 
-  // Settings from store
-  const temperature = useSettingsStore(state => state.temperature);
-  const topP = useSettingsStore(state => state.topP);
-  const topK = useSettingsStore(state => state.topK);
-  const minP = useSettingsStore(state => state.minP);
-  const maxTokens = useSettingsStore(state => state.maxTokens);
-  const repeatPenalty = useSettingsStore(state => state.repeatPenalty);
+  // Consolidate model store subscriptions with useShallow
+  const { models, modelStates, activeModelId, activeModelPath } = useModelStore(
+    useShallow(state => ({
+      models: state.models,
+      modelStates: state.modelStates,
+      activeModelId: state.activeModelId,
+      activeModelPath: state.activeModelPath,
+    })),
+  );
+
+  // Consolidate settings store subscriptions with useShallow
+  const { temperature, topP, topK, minP, maxTokens, repeatPenalty } = useSettingsStore(
+    useShallow(state => ({
+      temperature: state.temperature,
+      topP: state.topP,
+      topK: state.topK,
+      minP: state.minP,
+      maxTokens: state.maxTokens,
+      repeatPenalty: state.repeatPenalty,
+    })),
+  );
 
   // Derive values from reactive state
   const activeConversation = activeConversationId

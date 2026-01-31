@@ -2,7 +2,7 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 export type SortField = "size" | "name" | "quant";
 export type SortDirection = "asc" | "desc";
@@ -25,8 +25,8 @@ interface SortOptionsProps {
 
 export function SortOptions({ sort, onSortChange }: SortOptionsProps) {
   const { triggerLight } = useHaptics();
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const tintColor = useThemeColor({}, "tint");
+  const colors = useAllThemeColors();
+  const { cardBackground, tint: tintColor } = colors;
 
   const handleSortChange = (field: SortField) => {
     triggerLight();

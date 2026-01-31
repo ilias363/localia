@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { useAllThemeColors } from "@/hooks/use-theme-colors";
 
 interface ModelLibraryHeaderProps {
   totalModels: number;
@@ -18,10 +18,8 @@ export function ModelLibraryHeader({
   activeCount,
   onBack,
 }: ModelLibraryHeaderProps) {
-  const tintColor = useThemeColor({}, "tint");
-  const iconColor = useThemeColor({}, "text");
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const successColor = useThemeColor({}, "success");
+  const colors = useAllThemeColors();
+  const { tint: tintColor, text: iconColor, cardBackground, success: successColor } = colors;
 
   return (
     <View style={styles.heroHeader}>
