@@ -83,7 +83,32 @@ const checkModelExists = (modelId: string, models: ModelInfo[]): string | null =
   if (!model) return null;
 
   const filePath = getModelFilePath(model.fileName);
-  return filePath.exists ? filePath.uri : null;
+  if (!filePath.exists) return null;
+
+  // Validate file size - must be at least 95% of expected size (allow some tolerance for metadata differences)
+  // If sizeBytes is 0 (custom model), skip size validation
+  if (model.sizeBytes > 0) {
+    try {
+      const fileSize = filePath.size ?? 0;
+      const minExpectedSize = model.sizeBytes * 0.95;
+      if (fileSize < minExpectedSize) {
+        // File is incomplete - delete it
+        console.warn(
+          `Model ${modelId} file is incomplete (${fileSize} < ${model.sizeBytes}). Deleting...`,
+        );
+        try {
+          filePath.delete();
+        } catch {
+          // Ignore delete errors
+        }
+        return null;
+      }
+    } catch {
+      // If we can't get file size, just check existence
+    }
+  }
+
+  return filePath.uri;
 };
 
 const formatBytes = (bytes: number): string => {
@@ -170,10 +195,18 @@ export const useModelStore = create<ModelStore>()(
 
         // Model operations
         downloadModel: async (modelId: string) => {
-          const { models, updateModelState } = get();
+          const { models, updateModelState, modelStates } = get();
           const model = models.find(m => m.id === modelId);
           if (!model) {
             throw new Error(`Model ${modelId} not found`);
+          }
+
+          // Check if any model is currently loading (blocks JS thread)
+          const isAnyModelLoading = Object.values(modelStates).some(s => s.status === "loading");
+          if (isAnyModelLoading) {
+            throw new Error(
+              "Cannot download while a model is loading. Please wait for the model to finish loading.",
+            );
           }
 
           try {
@@ -200,6 +233,10 @@ export const useModelStore = create<ModelStore>()(
               modelFile.uri,
               {},
               downloadProgress => {
+                // Check if cancelled during download
+                if (runtimeState.cancelledDownloads.has(modelId)) {
+                  return;
+                }
                 const progress =
                   (downloadProgress.totalBytesWritten /
                     downloadProgress.totalBytesExpectedToWrite) *
@@ -229,6 +266,24 @@ export const useModelStore = create<ModelStore>()(
 
             if (!result?.uri) {
               throw new Error("Download failed - no URI returned");
+            }
+
+            // Verify downloaded file size
+            const downloadedFile = new File(result.uri);
+            if (downloadedFile.exists && model.sizeBytes > 0) {
+              const fileSize = downloadedFile.size ?? 0;
+              const minExpectedSize = model.sizeBytes * 0.95;
+              if (fileSize < minExpectedSize) {
+                // Download is incomplete
+                try {
+                  downloadedFile.delete();
+                } catch {
+                  // Ignore delete errors
+                }
+                throw new Error(
+                  `Download incomplete: got ${formatBytes(fileSize)}, expected ${model.size}`,
+                );
+              }
             }
 
             updateModelState(modelId, {
@@ -268,34 +323,35 @@ export const useModelStore = create<ModelStore>()(
         },
 
         cancelDownload: async (modelId: string) => {
-          // Mark as cancelled before pausing
+          // Mark as cancelled FIRST and update UI immediately
           runtimeState.cancelledDownloads.add(modelId);
+          get().updateModelState(modelId, { status: "not-downloaded", progress: 0 });
 
           const downloadResumable = runtimeState.downloadResumables[modelId];
           if (downloadResumable) {
-            try {
-              await downloadResumable.pauseAsync();
-            } catch {
-              // Ignore pause errors
-            }
+            // Pause in background - don't wait for it
+            downloadResumable.pauseAsync().catch(() => {
+              // Ignore pause errors - download might already be done or failed
+            });
             delete runtimeState.downloadResumables[modelId];
           }
 
-          // Clean up partial file
+          // Clean up partial file in background
           const { models } = get();
           const model = models.find(m => m.id === modelId);
           if (model) {
             const modelFile = getModelFilePath(model.fileName);
-            if (modelFile.exists) {
-              try {
-                modelFile.delete();
-              } catch {
-                // Ignore delete errors
+            // Wait a bit for the file handle to be released, then delete
+            setTimeout(() => {
+              if (modelFile.exists) {
+                try {
+                  modelFile.delete();
+                } catch (e) {
+                  console.warn("Failed to delete partial download:", e);
+                }
               }
-            }
+            }, 500);
           }
-
-          get().updateModelState(modelId, { status: "not-downloaded", progress: 0 });
         },
 
         deleteModel: async (modelId: string) => {
@@ -339,10 +395,20 @@ export const useModelStore = create<ModelStore>()(
         },
 
         loadModel: async (modelId: string) => {
-          const { models, getModelState, updateModelState } = get();
+          const { models, getModelState, updateModelState, modelStates } = get();
           const model = models.find(m => m.id === modelId);
           if (!model) {
             throw new Error(`Model ${modelId} not found`);
+          }
+
+          // Check if any model is currently downloading
+          const isAnyModelDownloading = Object.values(modelStates).some(
+            s => s.status === "downloading",
+          );
+          if (isAnyModelDownloading) {
+            throw new Error(
+              "Cannot load a model while a download is in progress. Please wait for the download to complete or cancel it.",
+            );
           }
 
           const state = getModelState(modelId);
