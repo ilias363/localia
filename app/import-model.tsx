@@ -1,24 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ChatTemplateSelector, FileInfoCard, ImportActionButtons } from "@/components/import";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { FormField, LoadingOverlay } from "@/components/ui";
 import { SUPPORTED_CHAT_TEMPLATES } from "@/constants/models";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useModelStore } from "@/stores/model-store";
+
+interface ImportFormState {
+  name: string;
+  provider: string;
+  description: string;
+  quantization: string;
+  contextLength: string;
+  chatTemplate: string;
+}
 
 export default function ImportModelScreen() {
   const router = useRouter();
@@ -30,15 +32,12 @@ export default function ImportModelScreen() {
   }>();
   const { triggerMedium, triggerSuccess, triggerError } = useHaptics();
 
-  const tintColor = useThemeColor({}, "tint");
   const iconColor = useThemeColor({}, "text");
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const borderColor = useThemeColor({}, "border");
 
   const importModel = useModelStore(state => state.importModel);
 
   const [isImporting, setIsImporting] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ImportFormState>({
     name: params.fileName?.replace(".gguf", "") ?? "",
     provider: "Custom",
     description: "Imported GGUF model",
@@ -48,6 +47,10 @@ export default function ImportModelScreen() {
   });
 
   const fileSize = params.fileSize ? parseInt(params.fileSize, 10) : undefined;
+
+  const updateForm = <K extends keyof ImportFormState>(key: K, value: ImportFormState[K]) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleImport = async () => {
     if (!params.fileUri || !params.fileName) {
@@ -102,6 +105,8 @@ export default function ImportModelScreen() {
     router.back();
   };
 
+  const isFormValid = form.name.trim() && form.chatTemplate;
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -119,93 +124,49 @@ export default function ImportModelScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Selected file info */}
-        <View style={[styles.fileCard, { backgroundColor: cardBackground, borderColor }]}>
-          <View style={[styles.fileIconContainer, { backgroundColor: tintColor + "20" }]}>
-            <Ionicons name="document" size={28} color={tintColor} />
-          </View>
-          <View style={styles.fileInfo}>
-            <ThemedText style={styles.fileName} numberOfLines={2}>
-              {params.fileName}
-            </ThemedText>
-            {fileSize && (
-              <ThemedText style={styles.fileSize}>
-                {(fileSize / (1024 * 1024)).toFixed(1)} MB
-              </ThemedText>
-            )}
-          </View>
-        </View>
+        <FileInfoCard fileName={params.fileName} fileSize={fileSize} />
 
-        {/* Form */}
+        {/* Form - Model Information */}
         <View style={styles.formSection}>
           <ThemedText style={styles.sectionTitle}>Model Information</ThemedText>
 
-          <View style={styles.formGroup}>
-            <ThemedText style={styles.formLabel}>Name *</ThemedText>
-            <TextInput
-              style={[
-                styles.formInput,
-                { backgroundColor: cardBackground, color: iconColor, borderColor },
-              ]}
-              placeholder="Enter model name"
-              placeholderTextColor={iconColor + "60"}
-              value={form.name}
-              onChangeText={text => setForm(f => ({ ...f, name: text }))}
-            />
-          </View>
+          <FormField
+            label="Name"
+            value={form.name}
+            onChangeText={value => updateForm("name", value)}
+            placeholder="Enter model name"
+            required
+          />
 
-          <View style={styles.formGroup}>
-            <ThemedText style={styles.formLabel}>Provider</ThemedText>
-            <TextInput
-              style={[
-                styles.formInput,
-                { backgroundColor: cardBackground, color: iconColor, borderColor },
-              ]}
-              placeholder="e.g., TheBloke, unsloth"
-              placeholderTextColor={iconColor + "60"}
-              value={form.provider}
-              onChangeText={text => setForm(f => ({ ...f, provider: text }))}
-            />
-          </View>
+          <FormField
+            label="Provider"
+            value={form.provider}
+            onChangeText={value => updateForm("provider", value)}
+            placeholder="e.g., TheBloke, unsloth"
+          />
 
-          <View style={styles.formGroup}>
-            <ThemedText style={styles.formLabel}>Description</ThemedText>
-            <TextInput
-              style={[
-                styles.formInput,
-                { backgroundColor: cardBackground, color: iconColor, borderColor },
-              ]}
-              placeholder="Brief description of the model"
-              placeholderTextColor={iconColor + "60"}
-              value={form.description}
-              onChangeText={text => setForm(f => ({ ...f, description: text }))}
-            />
-          </View>
+          <FormField
+            label="Description"
+            value={form.description}
+            onChangeText={value => updateForm("description", value)}
+            placeholder="Brief description of the model"
+          />
 
           <View style={styles.formRow}>
-            <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-              <ThemedText style={styles.formLabel}>Quantization</ThemedText>
-              <TextInput
-                style={[
-                  styles.formInput,
-                  { backgroundColor: cardBackground, color: iconColor, borderColor },
-                ]}
-                placeholder="e.g., Q4_K_M"
-                placeholderTextColor={iconColor + "60"}
+            <View style={styles.formRowHalf}>
+              <FormField
+                label="Quantization"
                 value={form.quantization}
-                onChangeText={text => setForm(f => ({ ...f, quantization: text }))}
+                onChangeText={value => updateForm("quantization", value)}
+                placeholder="e.g., Q4_K_M"
               />
             </View>
-            <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-              <ThemedText style={styles.formLabel}>Context Length</ThemedText>
-              <TextInput
-                style={[
-                  styles.formInput,
-                  { backgroundColor: cardBackground, color: iconColor, borderColor },
-                ]}
-                placeholder="e.g., 2048"
-                placeholderTextColor={iconColor + "60"}
+            <View style={styles.formRowHalf}>
+              <FormField
+                label="Context Length"
                 value={form.contextLength}
-                onChangeText={text => setForm(f => ({ ...f, contextLength: text }))}
+                onChangeText={value => updateForm("contextLength", value)}
+                placeholder="e.g., 2048"
                 keyboardType="number-pad"
               />
             </View>
@@ -213,86 +174,27 @@ export default function ImportModelScreen() {
         </View>
 
         {/* Chat Template Section */}
-        <View style={styles.formSection}>
-          <ThemedText style={styles.sectionTitle}>Chat Template *</ThemedText>
-          <ThemedText style={styles.sectionSubtitle}>
-            Select the chat format used by this model
-          </ThemedText>
-
-          <View style={styles.templateGrid}>
-            {SUPPORTED_CHAT_TEMPLATES.map(template => (
-              <TouchableOpacity
-                key={template}
-                style={[
-                  styles.templateChip,
-                  { borderColor: form.chatTemplate === template ? tintColor : borderColor },
-                  form.chatTemplate === template && { backgroundColor: tintColor + "20" },
-                ]}
-                onPress={() => setForm(f => ({ ...f, chatTemplate: template }))}
-                activeOpacity={0.7}
-              >
-                <ThemedText
-                  style={[
-                    styles.templateChipText,
-                    form.chatTemplate === template && { color: tintColor, fontWeight: "600" },
-                  ]}
-                >
-                  {template}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <ChatTemplateSelector
+          templates={SUPPORTED_CHAT_TEMPLATES}
+          selectedTemplate={form.chatTemplate}
+          onSelect={template => updateForm("chatTemplate", template)}
+        />
 
         {/* Action Buttons */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton, { borderColor }]}
-            onPress={handleCancel}
-            disabled={isImporting}
-            activeOpacity={0.7}
-          >
-            <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.importButton,
-              (!form.name.trim() || !form.chatTemplate || isImporting) && { opacity: 0.5 },
-            ]}
-            onPress={handleImport}
-            disabled={!form.name.trim() || !form.chatTemplate || isImporting}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[tintColor, `${tintColor}DD`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.importButtonGradient}
-            >
-              {isImporting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="download-outline" size={20} color="#fff" />
-              )}
-              <ThemedText style={styles.importButtonText}>
-                {isImporting ? "Importing..." : "Import"}
-              </ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <ImportActionButtons
+          onCancel={handleCancel}
+          onImport={handleImport}
+          isImporting={isImporting}
+          disabled={!isFormValid}
+        />
       </ScrollView>
 
       {/* Loading Overlay */}
-      {isImporting && (
-        <View style={styles.loadingOverlay}>
-          <View style={[styles.loadingCard, { backgroundColor: cardBackground }]}>
-            <ActivityIndicator size="large" color={tintColor} />
-            <ThemedText style={styles.loadingText}>Importing model...</ThemedText>
-            <ThemedText style={styles.loadingSubtext}>Copying file to app storage</ThemedText>
-          </View>
-        </View>
-      )}
+      <LoadingOverlay
+        visible={isImporting}
+        title="Importing model..."
+        subtitle="Copying file to app storage"
+      />
     </ThemedView>
   );
 }
@@ -325,33 +227,6 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 24,
   },
-  fileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  fileIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fileInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  fileName: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  fileSize: {
-    fontSize: 14,
-    opacity: 0.6,
-  },
   formSection: {
     gap: 12,
   },
@@ -359,96 +234,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    opacity: 0.6,
-    marginTop: -4,
-  },
-  formGroup: {
-    gap: 6,
-  },
   formRow: {
     flexDirection: "row",
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    opacity: 0.8,
-  },
-  formInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  templateGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  templateChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1.5,
-  },
-  templateChipText: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  button: {
-    flex: 1,
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  cancelButton: {
-    borderWidth: 1,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  importButton: {},
-  importButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-  },
-  importButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingCard: {
-    padding: 32,
-    borderRadius: 20,
-    alignItems: "center",
     gap: 16,
-    minWidth: 200,
   },
-  loadingText: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    opacity: 0.7,
+  formRowHalf: {
+    flex: 1,
   },
 });

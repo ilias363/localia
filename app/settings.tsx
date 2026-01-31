@@ -2,21 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  Alert,
-  Linking,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdvancedParametersModal, SettingRow, SettingToggle } from "@/components/settings";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { Card, Divider, SectionTitle } from "@/components/ui";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useConversationStore } from "@/stores/conversation-store";
@@ -28,10 +20,9 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { triggerLight, triggerMedium, triggerSuccess, triggerWarning } = useHaptics();
   const borderColor = useThemeColor({}, "border");
-  const cardBackground = useThemeColor({}, "cardBackground");
+  const tintColor = useThemeColor({}, "tint");
   const iconColor = useThemeColor({}, "text");
   const dangerColor = useThemeColor({}, "danger");
-  const tintColor = useThemeColor({}, "tint");
   const successColor = useThemeColor({}, "success");
   const warningColor = useThemeColor({}, "warning");
 
@@ -70,12 +61,14 @@ export default function SettingsScreen() {
 
   // Advanced parameters modal state
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
-  const [tempTemperature, setTempTemperature] = useState(temperature.toString());
-  const [tempTopP, setTempTopP] = useState(topP.toString());
-  const [tempTopK, setTempTopK] = useState(topK.toString());
-  const [tempMinP, setTempMinP] = useState(minP.toString());
-  const [tempMaxTokens, setTempMaxTokens] = useState(maxTokens.toString());
-  const [tempRepeatPenalty, setTempRepeatPenalty] = useState(repeatPenalty.toString());
+  const [advancedParams, setAdvancedParams] = useState({
+    temperature: temperature.toString(),
+    topP: topP.toString(),
+    topK: topK.toString(),
+    minP: minP.toString(),
+    maxTokens: maxTokens.toString(),
+    repeatPenalty: repeatPenalty.toString(),
+  });
 
   const handleClearAllChats = () => {
     if (conversations.length === 0) {
@@ -108,22 +101,24 @@ export default function SettingsScreen() {
 
   const handleAdvancedParameters = () => {
     triggerLight();
-    setTempTemperature(temperature.toString());
-    setTempTopP(topP.toString());
-    setTempTopK(topK.toString());
-    setTempMinP(minP.toString());
-    setTempMaxTokens(maxTokens.toString());
-    setTempRepeatPenalty(repeatPenalty.toString());
+    setAdvancedParams({
+      temperature: temperature.toString(),
+      topP: topP.toString(),
+      topK: topK.toString(),
+      minP: minP.toString(),
+      maxTokens: maxTokens.toString(),
+      repeatPenalty: repeatPenalty.toString(),
+    });
     setShowAdvancedModal(true);
   };
 
   const handleSaveAdvancedParameters = () => {
-    const newTemp = parseFloat(tempTemperature);
-    const newTopP = parseFloat(tempTopP);
-    const newTopK = parseInt(tempTopK, 10);
-    const newMinP = parseFloat(tempMinP);
-    const newMaxTokens = parseInt(tempMaxTokens, 10);
-    const newRepeatPenalty = parseFloat(tempRepeatPenalty);
+    const newTemp = parseFloat(advancedParams.temperature);
+    const newTopP = parseFloat(advancedParams.topP);
+    const newTopK = parseInt(advancedParams.topK, 10);
+    const newMinP = parseFloat(advancedParams.minP);
+    const newMaxTokens = parseInt(advancedParams.maxTokens, 10);
+    const newRepeatPenalty = parseFloat(advancedParams.repeatPenalty);
 
     if (isNaN(newTemp) || newTemp < 0 || newTemp > 2) {
       Alert.alert("Invalid Temperature", "Temperature must be between 0 and 2.");
@@ -162,12 +157,14 @@ export default function SettingsScreen() {
 
   const handleResetAdvancedParameters = () => {
     triggerMedium();
-    setTempTemperature("0.7");
-    setTempTopP("0.95");
-    setTempTopK("40");
-    setTempMinP("0.05");
-    setTempMaxTokens("512");
-    setTempRepeatPenalty("1.1");
+    setAdvancedParams({
+      temperature: "0.7",
+      topP: "0.95",
+      topK: "40",
+      minP: "0.05",
+      maxTokens: "512",
+      repeatPenalty: "1.1",
+    });
   };
 
   const handleModelPress = () => {
@@ -182,6 +179,7 @@ export default function SettingsScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: borderColor }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color={tintColor} />
@@ -191,150 +189,90 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <ThemedText style={styles.sectionTitle}>Model</ThemedText>
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <TouchableOpacity
-            style={styles.settingRow}
+        {/* Model Section */}
+        <SectionTitle>Model</SectionTitle>
+        <Card>
+          <SettingRow
+            icon="cube-outline"
+            iconColor={tintColor}
+            label={activeModel?.name ?? "No Model Selected"}
+            value={modelReady ? "Ready to use" : "Setup required"}
             onPress={handleModelPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: tintColor + "20" }]}>
-                <Ionicons name="cube-outline" size={20} color={tintColor} />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>
-                  {activeModel?.name ?? "No Model Selected"}
-                </ThemedText>
-                <ThemedText style={styles.settingValue}>
-                  {modelReady ? "Ready to use" : "Setup required"}
-                </ThemedText>
-              </View>
-            </View>
-            <View style={styles.settingRowRight}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: modelReady ? successColor : warningColor },
-                ]}
-              />
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={iconColor}
-                style={{ opacity: 0.4 }}
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
+            showChevron
+            statusDot={{
+              color: modelReady ? successColor : warningColor,
+              visible: true,
+            }}
+          />
+        </Card>
 
-        <ThemedText style={styles.sectionTitle}>Generation</ThemedText>
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <TouchableOpacity style={styles.settingRow} onPress={handleAdvancedParameters}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#EC489920" }]}>
-                <Ionicons name="options-outline" size={20} color="#EC4899" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Advanced Parameters</ThemedText>
-                <ThemedText style={styles.settingValue}>
-                  Temp: {temperature} · Top-P: {topP} · Max: {maxTokens}
-                </ThemedText>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={iconColor} style={{ opacity: 0.4 }} />
-          </TouchableOpacity>
-        </View>
+        {/* Generation Section */}
+        <SectionTitle>Generation</SectionTitle>
+        <Card>
+          <SettingRow
+            icon="options-outline"
+            iconColor="#EC4899"
+            label="Advanced Parameters"
+            value={`Temp: ${temperature} · Top-P: ${topP} · Max: ${maxTokens}`}
+            onPress={handleAdvancedParameters}
+            showChevron
+          />
+        </Card>
 
-        <ThemedText style={styles.sectionTitle}>App</ThemedText>
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#6366F120" }]}>
-                <Ionicons name="phone-portrait-outline" size={20} color="#6366F1" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Haptic Feedback</ThemedText>
-                <ThemedText style={styles.settingValue}>Vibrate on actions</ThemedText>
-              </View>
-            </View>
-            <Switch
-              value={hapticEnabled}
-              onValueChange={setHapticEnabled}
-              trackColor={{ false: borderColor, true: tintColor + "80" }}
-              thumbColor={hapticEnabled ? tintColor : "#f4f3f4"}
-            />
-          </View>
+        {/* App Section */}
+        <SectionTitle>App</SectionTitle>
+        <Card>
+          <SettingToggle
+            icon="phone-portrait-outline"
+            iconColor="#6366F1"
+            label="Haptic Feedback"
+            value="Vibrate on actions"
+            enabled={hapticEnabled}
+            onToggle={setHapticEnabled}
+          />
+          <Divider />
+          <SettingToggle
+            icon="analytics-outline"
+            iconColor="#10B981"
+            label="Stats for Nerds"
+            value="Show generation stats"
+            enabled={statsForNerdsEnabled}
+            onToggle={setStatsForNerdsEnabled}
+          />
+        </Card>
 
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+        {/* Data Section */}
+        <SectionTitle>Data</SectionTitle>
+        <Card>
+          <SettingRow
+            icon="trash-outline"
+            iconColor={dangerColor}
+            label="Clear All Conversations"
+            labelColor={dangerColor}
+            value={`${conversations.length} conversation${conversations.length !== 1 ? "s" : ""}`}
+            onPress={handleClearAllChats}
+          />
+        </Card>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#10B98120" }]}>
-                <Ionicons name="analytics-outline" size={20} color="#10B981" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Stats for Nerds</ThemedText>
-                <ThemedText style={styles.settingValue}>Show generation stats</ThemedText>
-              </View>
-            </View>
-            <Switch
-              value={statsForNerdsEnabled}
-              onValueChange={setStatsForNerdsEnabled}
-              trackColor={{ false: borderColor, true: tintColor + "80" }}
-              thumbColor={statsForNerdsEnabled ? tintColor : "#f4f3f4"}
-            />
-          </View>
-        </View>
-
-        <ThemedText style={styles.sectionTitle}>Data</ThemedText>
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <TouchableOpacity style={styles.settingRow} onPress={handleClearAllChats}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: dangerColor + "20" }]}>
-                <Ionicons name="trash-outline" size={20} color={dangerColor} />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={[styles.settingLabel, { color: dangerColor }]}>
-                  Clear All Conversations
-                </ThemedText>
-                <ThemedText style={styles.settingValue}>
-                  {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
-                </ThemedText>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <ThemedText style={styles.sectionTitle}>About</ThemedText>
-        <View style={[styles.card, { backgroundColor: cardBackground }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: "#10B98120" }]}>
-                <Ionicons name="information-circle-outline" size={20} color="#10B981" />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Version</ThemedText>
-                <ThemedText style={styles.settingValue}>{appVersion}</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.settingRow} onPress={handleGitHub}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.iconContainer, { backgroundColor: iconColor + "15" }]}>
-                <Ionicons name="logo-github" size={20} color={iconColor} />
-              </View>
-              <View style={styles.settingTextContainer}>
-                <ThemedText style={styles.settingLabel}>Source Code</ThemedText>
-                <ThemedText style={styles.settingValue}>View on GitHub</ThemedText>
-              </View>
-            </View>
-            <Ionicons name="open-outline" size={18} color={iconColor} style={{ opacity: 0.4 }} />
-          </TouchableOpacity>
-        </View>
+        {/* About Section */}
+        <SectionTitle>About</SectionTitle>
+        <Card>
+          <SettingRow
+            icon="information-circle-outline"
+            iconColor="#10B981"
+            label="Version"
+            value={appVersion}
+          />
+          <Divider />
+          <SettingRow
+            icon="logo-github"
+            iconColor={iconColor}
+            label="Source Code"
+            value="View on GitHub"
+            onPress={handleGitHub}
+            showChevron
+          />
+        </Card>
 
         <ThemedText style={styles.footerText}>
           Localia runs AI models locally on your device.{"\n"}
@@ -343,160 +281,14 @@ export default function SettingsScreen() {
       </ScrollView>
 
       {/* Advanced Parameters Modal */}
-      <Modal
+      <AdvancedParametersModal
         visible={showAdvancedModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowAdvancedModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: cardBackground }]}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Advanced Parameters</ThemedText>
-              <TouchableOpacity onPress={() => setShowAdvancedModal(false)}>
-                <Ionicons name="close" size={24} color={iconColor} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Temperature</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Controls randomness (0 = deterministic, 2 = creative)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempTemperature}
-                  onChangeText={setTempTemperature}
-                  keyboardType="decimal-pad"
-                  placeholder="0.7"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Top-P (Nucleus Sampling)</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Cumulative probability threshold (0.1 = focused, 1.0 = diverse)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempTopP}
-                  onChangeText={setTempTopP}
-                  keyboardType="decimal-pad"
-                  placeholder="0.95"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Top-K</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Limit to top K tokens (1 = greedy, 100 = diverse)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempTopK}
-                  onChangeText={setTempTopK}
-                  keyboardType="number-pad"
-                  placeholder="40"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Min-P</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Minimum probability filter (0 = disabled, 0.1 = moderate)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempMinP}
-                  onChangeText={setTempMinP}
-                  keyboardType="decimal-pad"
-                  placeholder="0.05"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Max Tokens</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Maximum response length (1 - 4096)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempMaxTokens}
-                  onChangeText={setTempMaxTokens}
-                  keyboardType="number-pad"
-                  placeholder="512"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-
-              <View style={styles.parameterRow}>
-                <View style={styles.parameterInfo}>
-                  <ThemedText style={styles.parameterLabel}>Repeat Penalty</ThemedText>
-                  <ThemedText style={styles.parameterDescription}>
-                    Penalize repeated tokens (1 = none, 2 = strong)
-                  </ThemedText>
-                </View>
-                <TextInput
-                  style={[
-                    styles.parameterInput,
-                    { backgroundColor: borderColor + "40", color: iconColor },
-                  ]}
-                  value={tempRepeatPenalty}
-                  onChangeText={setTempRepeatPenalty}
-                  keyboardType="decimal-pad"
-                  placeholder="1.1"
-                  placeholderTextColor={iconColor + "60"}
-                />
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.resetButton, { borderColor }]}
-                onPress={handleResetAdvancedParameters}
-              >
-                <ThemedText style={styles.resetButtonText}>Reset</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton, { backgroundColor: tintColor }]}
-                onPress={handleSaveAdvancedParameters}
-              >
-                <ThemedText style={styles.saveButtonText}>Save</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowAdvancedModal(false)}
+        values={advancedParams}
+        onValuesChange={setAdvancedParams}
+        onSave={handleSaveAdvancedParameters}
+        onReset={handleResetAdvancedParameters}
+      />
     </ThemedView>
   );
 }
@@ -530,153 +322,11 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    opacity: 0.4,
-    marginBottom: 8,
-    marginTop: 20,
-    marginLeft: 4,
-    letterSpacing: 0.5,
-  },
-  card: {
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    paddingHorizontal: 14,
-  },
-  settingInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  settingTextContainer: {
-    flex: 1,
-  },
-  settingRowRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  settingLabel: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  settingValue: {
-    fontSize: 13,
-    opacity: 0.5,
-    marginTop: 1,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 5,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  divider: {
-    height: 1,
-    marginLeft: 62,
-  },
   footerText: {
     fontSize: 13,
     opacity: 0.35,
     textAlign: "center",
     marginTop: 32,
     lineHeight: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 40,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  modalScroll: {
-    marginBottom: 8,
-  },
-  parameterRow: {
-    marginBottom: 16,
-  },
-  parameterInfo: {
-    marginBottom: 8,
-  },
-  parameterLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  parameterDescription: {
-    fontSize: 13,
-    opacity: 0.5,
-    marginTop: 2,
-  },
-  parameterInput: {
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  resetButton: {
-    borderWidth: 1,
-  },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  saveButton: {},
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ffffff",
   },
 });

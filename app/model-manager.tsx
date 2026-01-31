@@ -1,42 +1,26 @@
-import { Ionicons } from "@expo/vector-icons";
 import { getDocumentAsync } from "expo-document-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ModelCard } from "@/components/model";
-import { ThemedText } from "@/components/themed-text";
+import {
+  EmptySearchResults,
+  ImportModelCard,
+  ModelCard,
+  ModelLibraryFooter,
+  ModelLibraryHeader,
+  ModelSectionHeader,
+  SortOptions,
+  type SortField,
+  type SortState,
+} from "@/components/model";
 import { ThemedView } from "@/components/themed-view";
+import { LoadingOverlay, SearchBar } from "@/components/ui";
 import { useHaptics } from "@/hooks/use-haptics";
-import { useThemeColor } from "@/hooks/use-theme-color";
 import { llmService } from "@/services/llm";
 import { useModelStore } from "@/stores/model-store";
 import type { ModelInfo } from "@/types";
-
-// Sort options
-type SortField = "size" | "name" | "quant";
-type SortDirection = "asc" | "desc";
-
-interface SortState {
-  field: SortField;
-  direction: SortDirection;
-}
-
-const SORT_FIELDS: { value: SortField; label: string }[] = [
-  { value: "size", label: "Size" },
-  { value: "name", label: "Name" },
-  { value: "quant", label: "Quant" },
-];
 
 function sortModels(models: ModelInfo[], sort: SortState): ModelInfo[] {
   return [...models].sort((a, b) => {
@@ -71,12 +55,7 @@ function sortModels(models: ModelInfo[], sort: SortState): ModelInfo[] {
 export default function ModelManagerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { triggerLight, triggerMedium, triggerSuccess, triggerError } = useHaptics();
-  const tintColor = useThemeColor({}, "tint");
-  const iconColor = useThemeColor({}, "text");
-  const cardBackground = useThemeColor({}, "cardBackground");
-  const successColor = useThemeColor({}, "success");
-  const borderColor = useThemeColor({}, "border");
+  const { triggerMedium, triggerSuccess, triggerError } = useHaptics();
 
   const models = useModelStore(state => state.models);
   const modelStates = useModelStore(state => state.modelStates);
@@ -140,13 +119,10 @@ export default function ModelManagerScreen() {
   }).length;
 
   const handleSortChange = (field: SortField) => {
-    triggerLight();
     setSort(prev => {
       if (prev.field === field) {
-        // Toggle direction
         return { field, direction: prev.direction === "asc" ? "desc" : "asc" };
       }
-      // New field, default to ascending
       return { field, direction: "asc" };
     });
   };
@@ -234,7 +210,6 @@ export default function ModelManagerScreen() {
               text: "Add File",
               onPress: () => {
                 setIsImporting(true);
-                // Use setTimeout to ensure the loading state renders before synchronous file copy
                 setTimeout(async () => {
                   try {
                     await importModel({
@@ -284,47 +259,13 @@ export default function ModelManagerScreen() {
   return (
     <ThemedView style={styles.container}>
       {/* Hero Header */}
-      <View style={[styles.heroHeader, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color={iconColor} />
-        </TouchableOpacity>
-
-        <View style={styles.heroContent}>
-          <View style={styles.heroIconWrapper}>
-            <LinearGradient
-              colors={[tintColor, `${tintColor}99`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroIconGradient}
-            >
-              <Ionicons name="cube" size={32} color="#ffffff" />
-            </LinearGradient>
-          </View>
-          <ThemedText style={styles.heroTitle}>Model Library</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Download and manage AI models for offline use
-          </ThemedText>
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <View style={[styles.statItem, { backgroundColor: cardBackground }]}>
-              <ThemedText style={styles.statNumber}>{models.length}</ThemedText>
-              <ThemedText style={styles.statLabel}>Available</ThemedText>
-            </View>
-            <View style={[styles.statItem, { backgroundColor: cardBackground }]}>
-              <ThemedText style={[styles.statNumber, { color: successColor }]}>
-                {downloadedCount}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Downloaded</ThemedText>
-            </View>
-            <View style={[styles.statItem, { backgroundColor: cardBackground }]}>
-              <ThemedText style={[styles.statNumber, { color: tintColor }]}>
-                {activeModel ? 1 : 0}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Active</ThemedText>
-            </View>
-          </View>
-        </View>
+      <View style={{ paddingTop: insets.top }}>
+        <ModelLibraryHeader
+          totalModels={models.length}
+          downloadedCount={downloadedCount}
+          activeCount={activeModel ? 1 : 0}
+          onBack={() => router.back()}
+        />
       </View>
 
       <ScrollView
@@ -333,59 +274,25 @@ export default function ModelManagerScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Import Section */}
-        <TouchableOpacity
-          style={[styles.importCard, { borderColor: tintColor + "40" }]}
-          onPress={handlePickFile}
-          activeOpacity={0.7}
-        >
-          <LinearGradient
-            colors={[`${tintColor}45`, `${tintColor}15`]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.importCardGradient}
-          >
-            <View style={[styles.importIconContainer, { backgroundColor: tintColor + "20" }]}>
-              <Ionicons name="add-circle-outline" size={22} color={tintColor} />
-            </View>
-            <View style={styles.importTextContainer}>
-              <ThemedText style={styles.importTitle}>Import Custom Model</ThemedText>
-              <ThemedText style={styles.importSubtitle}>Add a GGUF file from device</ThemedText>
-            </View>
-            <View style={[styles.importArrow, { backgroundColor: tintColor + "15" }]}>
-              <Ionicons name="arrow-forward" size={14} color={tintColor} />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+        <ImportModelCard onPress={handlePickFile} />
+        <View style={styles.spacer} />
 
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: cardBackground, borderColor }]}>
-          <Ionicons name="search" size={18} color={iconColor} style={{ opacity: 0.5 }} />
-          <TextInput
-            style={[styles.searchInput, { color: iconColor }]}
-            placeholder="Search models..."
-            placeholderTextColor={iconColor + "60"}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color={iconColor} style={{ opacity: 0.5 }} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search models..."
+        />
+        <View style={styles.spacerLarge} />
 
         {/* Your Models Section */}
         {downloadedModels.length > 0 && (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Ionicons name="folder-open-outline" size={16} color={tintColor} />
-                <ThemedText style={styles.sectionTitle}>Your Models</ThemedText>
-              </View>
-              <ThemedText style={styles.sectionSubtitle}>Downloaded and ready to use</ThemedText>
-            </View>
+            <ModelSectionHeader
+              icon="folder-open-outline"
+              title="Your Models"
+              subtitle="Downloaded and ready to use"
+            />
 
             {downloadedModels.map((model, index) => (
               <ModelCard
@@ -401,52 +308,22 @@ export default function ModelManagerScreen() {
               />
             ))}
 
-            {/* Spacer between sections */}
-            <View style={{ height: 16 }} />
+            <View style={styles.spacer} />
           </>
         )}
 
         {/* Available Models Section with Sort */}
         {sortedAvailableModels.length > 0 && (
           <>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Ionicons name="cloud-download-outline" size={16} color={tintColor} />
-                <ThemedText style={styles.sectionTitle}>Available Models</ThemedText>
-              </View>
-              <ThemedText style={styles.sectionSubtitle}>
-                {sortedAvailableModels.length} models available
-              </ThemedText>
-            </View>
+            <ModelSectionHeader
+              icon="cloud-download-outline"
+              title="Available Models"
+              subtitle={`${sortedAvailableModels.length} models available`}
+            />
 
-            {/* Sort Options */}
-            <View style={styles.sortRow}>
-              <ThemedText style={styles.sortLabel}>Sort:</ThemedText>
-              <View style={styles.sortOptions}>
-                {SORT_FIELDS.map(field => {
-                  const isActive = sort.field === field.value;
-                  const arrow = isActive ? (sort.direction === "asc" ? "↑" : "↓") : "";
-                  return (
-                    <TouchableOpacity
-                      key={field.value}
-                      style={[
-                        styles.sortButton,
-                        { backgroundColor: cardBackground },
-                        isActive && { backgroundColor: tintColor + "20" },
-                      ]}
-                      onPress={() => handleSortChange(field.value)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={[styles.sortButtonText, isActive && { color: tintColor }]}>
-                        {field.label} {arrow}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+            <SortOptions sort={sort} onSortChange={handleSortChange} />
+            <View style={styles.spacerSmall} />
 
-            {/* Model List */}
             {sortedAvailableModels.map((model, index) => (
               <ModelCard
                 key={model.id}
@@ -464,38 +341,18 @@ export default function ModelManagerScreen() {
         )}
 
         {/* No results */}
-        {searchQuery && filteredModels.length === 0 && (
-          <View style={styles.noResults}>
-            <Ionicons name="search-outline" size={48} color={iconColor} style={{ opacity: 0.3 }} />
-            <ThemedText style={styles.noResultsText}>No models found</ThemedText>
-            <ThemedText style={styles.noResultsSubtext}>Try a different search term</ThemedText>
-          </View>
-        )}
+        {searchQuery && filteredModels.length === 0 && <EmptySearchResults query={searchQuery} />}
 
         {/* Info Footer */}
-        <View style={styles.footer}>
-          <Ionicons
-            name="lock-closed-outline"
-            size={14}
-            color={iconColor}
-            style={{ opacity: 0.4 }}
-          />
-          <ThemedText style={styles.footerText}>
-            Models run locally. Your data stays on device.
-          </ThemedText>
-        </View>
+        <ModelLibraryFooter />
       </ScrollView>
 
       {/* Loading Overlay */}
-      {isImporting && (
-        <View style={styles.loadingOverlay}>
-          <View style={[styles.loadingCard, { backgroundColor: cardBackground }]}>
-            <ActivityIndicator size="large" color={tintColor} />
-            <ThemedText style={styles.loadingText}>Importing model...</ThemedText>
-            <ThemedText style={styles.loadingSubtext}>Copying file to app storage</ThemedText>
-          </View>
-        </View>
-      )}
+      <LoadingOverlay
+        visible={isImporting}
+        title="Importing model..."
+        subtitle="Copying file to app storage"
+      />
     </ThemedView>
   );
 }
@@ -504,70 +361,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  heroHeader: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: -8,
-    marginBottom: 8,
-  },
-  heroContent: {
-    alignItems: "center",
-  },
-  heroIconWrapper: {
-    marginBottom: 16,
-  },
-  heroIconGradient: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: "600",
-    paddingBottom: 4,
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  heroSubtitle: {
-    fontSize: 15,
-    opacity: 0.6,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-    minWidth: 90,
-  },
-  statNumber: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 12,
-    opacity: 0.5,
-    fontWeight: "500",
-  },
   content: {
     flex: 1,
   },
@@ -575,146 +368,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-  importCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    overflow: "hidden",
-    marginBottom: 16,
+  spacer: {
+    height: 16,
   },
-  importCardGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
+  spacerSmall: {
+    height: 14,
   },
-  importIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  importTextContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  importTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  importSubtitle: {
-    fontSize: 12,
-    opacity: 0.5,
-  },
-  importArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sectionHeader: {
-    marginBottom: 20,
-  },
-  sectionTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    opacity: 0.5,
-    marginLeft: 24,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 20,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    paddingVertical: 0,
-  },
-  sortRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    gap: 8,
-  },
-  sortLabel: {
-    fontSize: 13,
-    opacity: 0.5,
-  },
-  sortOptions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  sortButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  sortButtonText: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  noResults: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 48,
-    gap: 8,
-  },
-  noResultsText: {
-    fontSize: 18,
-    fontWeight: "600",
-    opacity: 0.6,
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    opacity: 0.4,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 13,
-    opacity: 0.4,
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingCard: {
-    padding: 32,
-    borderRadius: 20,
-    alignItems: "center",
-    gap: 16,
-    minWidth: 200,
-  },
-  loadingText: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    opacity: 0.7,
+  spacerLarge: {
+    height: 20,
   },
 });
