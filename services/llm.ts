@@ -142,7 +142,7 @@ class LLMService {
       const maxTokens = params?.maxTokens ?? DEFAULT_GENERATION_PARAMS.n_predict;
       const repeatPenalty = params?.repeatPenalty ?? DEFAULT_GENERATION_PARAMS.penalty_repeat;
 
-      await this.context.completion(
+      const result = await this.context.completion(
         {
           prompt,
           n_predict: maxTokens,
@@ -159,7 +159,16 @@ class LLMService {
         },
       );
 
-      callbacks.onComplete();
+      // Extract stats from completion result
+      const stats = result?.timings ? {
+        tokensGenerated: result.timings.predicted_n,
+        tokensPerSecond: result.timings.predicted_per_second,
+        generationTimeMs: result.timings.predicted_ms,
+        promptTokens: result.timings.prompt_n,
+        promptTimeMs: result.timings.prompt_ms,
+      } : undefined;
+
+      callbacks.onComplete(stats);
     } catch (error) {
       console.error("Generation error:", error);
       const err = error instanceof Error ? error : new Error("Generation failed");

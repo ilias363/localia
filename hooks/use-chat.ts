@@ -16,6 +16,7 @@ export function useChat() {
   const activeConversationId = useConversationStore(state => state.activeConversationId);
   const addMessage = useConversationStore(state => state.addMessage);
   const updateMessage = useConversationStore(state => state.updateMessage);
+  const updateMessageStats = useConversationStore(state => state.updateMessageStats);
   const createConversation = useConversationStore(state => state.createConversation);
   const updateConversationTitle = useConversationStore(state => state.updateConversationTitle);
 
@@ -89,7 +90,10 @@ export function useChat() {
             streamingContentRef.current += token;
             updateMessage(conversationId!, assistantMessage.id, streamingContentRef.current);
           },
-          onComplete: () => {
+          onComplete: stats => {
+            if (stats) {
+              updateMessageStats(conversationId!, assistantMessage.id, stats);
+            }
             setIsGenerating(false);
             setStreamingMessageId(null);
           },

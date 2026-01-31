@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { useSettingsStore } from "@/stores/settings-store";
 import type { Message } from "@/types";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
@@ -20,12 +21,16 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const statsForNerdsEnabled = useSettingsStore(s => s.statsForNerdsEnabled);
 
   const userBubbleColor = useThemeColor({}, "userBubble");
   const assistantBubbleColor = useThemeColor({}, "assistantBubble");
   const userTextColor = useThemeColor({}, "userBubbleText");
   const assistantTextColor = useThemeColor({}, "text");
   const tintColor = useThemeColor({}, "tint");
+  const subtleTextColor = useThemeColor({}, "icon");
+
+  const showStats = statsForNerdsEnabled && !isUser && !isStreaming && message.stats;
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
@@ -50,9 +55,19 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
           </ThemedText>
         )}
       </View>
-      <ThemedText style={styles.timestamp}>
-        {isStreaming ? "Generating..." : formatTime(message.timestamp)}
-      </ThemedText>
+      {showStats ? (
+        <View style={styles.statsRow}>
+          <ThemedText style={[styles.statsText, { color: subtleTextColor }]}>
+            {message.stats!.tokensGenerated} tokens • {message.stats!.tokensPerSecond.toFixed(1)}{" "}
+            tok/s • {(message.stats!.generationTimeMs / 1000).toFixed(1)}s
+          </ThemedText>
+          <ThemedText style={styles.timestamp}>{formatTime(message.timestamp)}</ThemedText>
+        </View>
+      ) : (
+        <ThemedText style={styles.timestamp}>
+          {isStreaming ? "Generating..." : formatTime(message.timestamp)}
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -146,8 +161,17 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 11,
     opacity: 0.5,
+    marginHorizontal: 4,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 4,
     marginHorizontal: 4,
+  },
+  statsText: {
+    fontSize: 11,
   },
   dotsContainer: {
     flexDirection: "row",

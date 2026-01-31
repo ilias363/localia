@@ -10,6 +10,7 @@ const STORE_VERSION = 1;
 interface SettingsStoreState extends Required<GenerationParams> {
   // App preferences
   hapticEnabled: boolean;
+  statsForNerdsEnabled: boolean;
 
   // Hydration state
   _hasHydrated: boolean;
@@ -18,6 +19,7 @@ interface SettingsStoreState extends Required<GenerationParams> {
 // Actions
 interface SettingsStoreActions {
   setHapticEnabled: (enabled: boolean) => void;
+  setStatsForNerdsEnabled: (enabled: boolean) => void;
   setTemperature: (temperature: number) => void;
   setTopP: (topP: number) => void;
   setTopK: (topK: number) => void;
@@ -31,8 +33,9 @@ interface SettingsStoreActions {
 type SettingsStore = SettingsStoreState & SettingsStoreActions;
 
 // Default values
-const DEFAULT_SETTINGS: Pick<SettingsStoreState, "hapticEnabled" | keyof GenerationParams> = {
+const DEFAULT_SETTINGS: Omit<SettingsStoreState, "_hasHydrated"> = {
   hapticEnabled: true,
+  statsForNerdsEnabled: false,
   temperature: 0.7,
   topP: 0.95,
   topK: 40,
@@ -56,6 +59,10 @@ export const useSettingsStore = create<SettingsStore>()(
       // Actions
       setHapticEnabled: (enabled: boolean) => {
         set({ hapticEnabled: enabled });
+      },
+
+      setStatsForNerdsEnabled: (enabled: boolean) => {
+        set({ statsForNerdsEnabled: enabled });
       },
 
       setTemperature: (temperature: number) => {
@@ -96,6 +103,7 @@ export const useSettingsStore = create<SettingsStore>()(
       // Only persist specific fields
       partialize: state => ({
         hapticEnabled: state.hapticEnabled,
+        statsForNerdsEnabled: state.statsForNerdsEnabled,
         temperature: state.temperature,
         topP: state.topP,
         topK: state.topK,

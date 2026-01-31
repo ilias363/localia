@@ -50,6 +50,8 @@ export default function SettingsScreen() {
   // Settings from store
   const hapticEnabled = useSettingsStore(state => state.hapticEnabled);
   const setHapticEnabled = useSettingsStore(state => state.setHapticEnabled);
+  const statsForNerdsEnabled = useSettingsStore(state => state.statsForNerdsEnabled);
+  const setStatsForNerdsEnabled = useSettingsStore(state => state.setStatsForNerdsEnabled);
   const temperature = useSettingsStore(state => state.temperature);
   const setTemperature = useSettingsStore(state => state.setTemperature);
   const topP = useSettingsStore(state => state.topP);
@@ -261,6 +263,26 @@ export default function SettingsScreen() {
               onValueChange={setHapticEnabled}
               trackColor={{ false: borderColor, true: tintColor + "80" }}
               thumbColor={hapticEnabled ? tintColor : "#f4f3f4"}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={[styles.iconContainer, { backgroundColor: "#10B98120" }]}>
+                <Ionicons name="analytics-outline" size={20} color="#10B981" />
+              </View>
+              <View style={styles.settingTextContainer}>
+                <ThemedText style={styles.settingLabel}>Stats for Nerds</ThemedText>
+                <ThemedText style={styles.settingValue}>Show generation stats</ThemedText>
+              </View>
+            </View>
+            <Switch
+              value={statsForNerdsEnabled}
+              onValueChange={setStatsForNerdsEnabled}
+              trackColor={{ false: borderColor, true: tintColor + "80" }}
+              thumbColor={statsForNerdsEnabled ? tintColor : "#f4f3f4"}
             />
           </View>
         </View>

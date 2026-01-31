@@ -9,11 +9,21 @@ export interface Message {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: number; // Unix timestamp in milliseconds
+  stats?: MessageStats; // Generation stats for assistant messages
+}
+
+// Stats for nerds - generation performance metrics
+export interface MessageStats {
+  tokensGenerated: number;
+  tokensPerSecond: number;
+  generationTimeMs: number;
+  promptTokens?: number;
+  promptTimeMs?: number;
 }
 
 export interface StreamCallbacks {
   onToken: (token: string) => void;
-  onComplete: () => void;
+  onComplete: (stats?: MessageStats) => void;
   onError?: (error: Error) => void;
 }
 
