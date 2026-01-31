@@ -279,6 +279,36 @@ export default function ModelManagerScreen() {
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Import Section */}
+        <TouchableOpacity
+          style={[styles.importCard, { borderColor: tintColor + "40" }]}
+          onPress={handleImport}
+          disabled={isImporting}
+          activeOpacity={0.7}
+        >
+          <LinearGradient
+            colors={[`${tintColor}45`, `${tintColor}15`]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.importCardGradient}
+          >
+            <View style={[styles.importIconContainer, { backgroundColor: tintColor + "20" }]}>
+              {isImporting ? (
+                <ActivityIndicator size="small" color={tintColor} />
+              ) : (
+                <Ionicons name="add-circle-outline" size={22} color={tintColor} />
+              )}
+            </View>
+            <View style={styles.importTextContainer}>
+              <ThemedText style={styles.importTitle}>Import Custom Model</ThemedText>
+              <ThemedText style={styles.importSubtitle}>Add a GGUF file from device</ThemedText>
+            </View>
+            <View style={[styles.importArrow, { backgroundColor: tintColor + "15" }]}>
+              <Ionicons name="arrow-forward" size={14} color={tintColor} />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* Search Bar */}
         <View style={[styles.searchContainer, { backgroundColor: cardBackground, borderColor }]}>
           <Ionicons name="search" size={18} color={iconColor} style={{ opacity: 0.5 }} />
@@ -297,38 +327,6 @@ export default function ModelManagerScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Import Section */}
-        <TouchableOpacity
-          style={[styles.importCard, { borderColor: tintColor + "40" }]}
-          onPress={handleImport}
-          disabled={isImporting}
-          activeOpacity={0.7}
-        >
-          <LinearGradient
-            colors={[`${tintColor}15`, `${tintColor}05`]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.importCardGradient}
-          >
-            <View style={[styles.importIconContainer, { backgroundColor: tintColor + "20" }]}>
-              {isImporting ? (
-                <ActivityIndicator size="small" color={tintColor} />
-              ) : (
-                <Ionicons name="add-circle-outline" size={28} color={tintColor} />
-              )}
-            </View>
-            <View style={styles.importTextContainer}>
-              <ThemedText style={styles.importTitle}>Import Custom Model</ThemedText>
-              <ThemedText style={styles.importSubtitle}>
-                Add a GGUF model file from your device
-              </ThemedText>
-            </View>
-            <View style={[styles.importArrow, { backgroundColor: tintColor + "15" }]}>
-              <Ionicons name="arrow-forward" size={18} color={tintColor} />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
 
         {/* Your Models Section */}
         {downloadedModels.length > 0 && (
@@ -519,41 +517,40 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   importCard: {
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 1,
     borderStyle: "dashed",
     overflow: "hidden",
-    marginBottom: 28,
+    marginBottom: 16,
   },
   importCardGradient: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    padding: 12,
   },
   importIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   importTextContainer: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 12,
   },
   importTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "600",
-    marginBottom: 4,
   },
   importSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.5,
   },
   importArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
