@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 
+import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useModelStore } from "@/stores/model-store";
 
@@ -17,10 +18,18 @@ export default function RootLayout() {
     initialize();
   }, [initialize]);
 
+  // Get background color for current theme to prevent white flash during transitions
+  const backgroundColor = colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+
   return (
     <KeyboardProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor },
+          }}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="settings" options={{ animation: "none" }} />
           <Stack.Screen name="model-manager" options={{ animation: "slide_from_right" }} />
