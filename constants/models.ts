@@ -5,14 +5,6 @@ import type { ModelInfo } from "@/types";
 // Re-export types for convenience
 export type { ModelInfo, ModelState, ModelStatus } from "@/types";
 
-// TODO: Test newly added models on device:
-// - Qwen3 (0.6B, 1.7B, 4B, 8B) - chatml template
-// - Qwen2.5 (0.5B, 1.5B, 3B) - chatml template
-// - SmolLM2 (360M, 1.7B) - chatml template
-// - Llama 3.2 (1B, 3B) - llama3 template
-// - Phi-3 Mini 4K - phi3 template
-// - Gemma 3 4B - gemma template
-
 // Default model parameters
 export const DEFAULT_GENERATION_PARAMS = {
   n_ctx: 2048,
@@ -53,161 +45,13 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     id: "tinyllama-1.1b-chat-q8_0",
     name: "TinyLlama 1.1B Q8_0",
     provider: "TheBloke",
-    description:
-      "Highest quality, largest size. Extremely low quality loss. Best for devices with ample storage.",
+    description: "Highest quality TinyLlama. Best for devices with ample storage.",
     size: "1.17 GB",
     sizeBytes: 1_170_000_000,
     downloadUrl:
       "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q8_0.gguf",
     fileName: "tinyllama-1.1b-chat-v1.0.Q8_0.gguf",
     quantization: "Q8_0",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q6k",
-    name: "TinyLlama 1.1B Q6_K",
-    provider: "TheBloke",
-    description:
-      "Very high quality with extremely low quality loss. Great balance of size and performance.",
-    size: "904 MB",
-    sizeBytes: 904_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q6_K.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q6_K.gguf",
-    quantization: "Q6_K",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q5km",
-    name: "TinyLlama 1.1B Q5_K_M",
-    provider: "TheBloke",
-    description:
-      "Recommended. Large size with very low quality loss. Excellent for capable devices.",
-    size: "783 MB",
-    sizeBytes: 783_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q5_K_M.gguf",
-    quantization: "Q5_K_M",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q5ks",
-    name: "TinyLlama 1.1B Q5_K_S",
-    provider: "TheBloke",
-    description:
-      "Recommended. Large size with low quality loss. Good for devices with more storage.",
-    size: "767 MB",
-    sizeBytes: 767_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q5_K_S.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q5_K_S.gguf",
-    quantization: "Q5_K_S",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q5_0",
-    name: "TinyLlama 1.1B Q5_0",
-    provider: "TheBloke",
-    description:
-      "Legacy format. Medium size with balanced quality. Prefer Q4_K_M for better results.",
-    size: "767 MB",
-    sizeBytes: 767_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q5_0.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q5_0.gguf",
-    quantization: "Q5_0",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q4ks",
-    name: "TinyLlama 1.1B Q4_K_S",
-    provider: "TheBloke",
-    description:
-      "Small size with slightly more quality loss than Q4_K_M. Good for limited storage.",
-    size: "644 MB",
-    sizeBytes: 644_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_S.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q4_K_S.gguf",
-    quantization: "Q4_K_S",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q4_0",
-    name: "TinyLlama 1.1B Q4_0",
-    provider: "TheBloke",
-    description:
-      "Legacy format. Small size with high quality loss. Prefer Q3_K_M for similar size.",
-    size: "638 MB",
-    sizeBytes: 638_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
-    quantization: "Q4_0",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q3kl",
-    name: "TinyLlama 1.1B Q3_K_L",
-    provider: "TheBloke",
-    description: "Small size with substantial quality loss. Good for very limited storage devices.",
-    size: "593 MB",
-    sizeBytes: 593_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q3_K_L.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q3_K_L.gguf",
-    quantization: "Q3_K_L",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q3km",
-    name: "TinyLlama 1.1B Q3_K_M",
-    provider: "TheBloke",
-    description: "Very small size with high quality loss. Use when storage is extremely limited.",
-    size: "551 MB",
-    sizeBytes: 551_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q3_K_M.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q3_K_M.gguf",
-    quantization: "Q3_K_M",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q3ks",
-    name: "TinyLlama 1.1B Q3_K_S",
-    provider: "TheBloke",
-    description:
-      "Very small size with high quality loss. Fastest option with noticeable quality trade-off.",
-    size: "500 MB",
-    sizeBytes: 500_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q3_K_S.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q3_K_S.gguf",
-    quantization: "Q3_K_S",
-    contextLength: 2048,
-    chatTemplate: "chatml",
-  },
-  {
-    id: "tinyllama-1.1b-chat-q2k",
-    name: "TinyLlama 1.1B Q2_K",
-    provider: "TheBloke",
-    description: "Smallest size with significant quality loss. Not recommended for most use cases.",
-    size: "483 MB",
-    sizeBytes: 483_000_000,
-    downloadUrl:
-      "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q2_K.gguf",
-    fileName: "tinyllama-1.1b-chat-v1.0.Q2_K.gguf",
-    quantization: "Q2_K",
     contextLength: 2048,
     chatTemplate: "chatml",
   },
@@ -220,8 +64,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     description: "Ultra-lightweight Qwen3 model. Perfect for low-end devices with limited RAM.",
     size: "639 MB",
     sizeBytes: 639_000_000,
-    downloadUrl: "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/qwen3-0.6b-q8_0.gguf",
-    fileName: "qwen3-0.6b-q8_0.gguf",
+    downloadUrl: "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf",
+    fileName: "Qwen3-0.6B-Q8_0.gguf",
     quantization: "Q8_0",
     contextLength: 4096,
     chatTemplate: "chatml",
@@ -234,8 +78,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       "Recommended. Excellent balance of size and quality. Great for most mobile devices.",
     size: "1.83 GB",
     sizeBytes: 1_830_000_000,
-    downloadUrl: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/qwen3-1.7b-q8_0.gguf",
-    fileName: "qwen3-1.7b-q8_0.gguf",
+    downloadUrl: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf",
+    fileName: "Qwen3-1.7B-Q8_0.gguf",
     quantization: "Q8_0",
     contextLength: 4096,
     chatTemplate: "chatml",
@@ -247,8 +91,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     description: "High-quality Qwen3 model. Best for high-end devices with 8GB+ RAM.",
     size: "2.5 GB",
     sizeBytes: 2_500_000_000,
-    downloadUrl: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/qwen3-4b-q4_k_m.gguf",
-    fileName: "qwen3-4b-q4_k_m.gguf",
+    downloadUrl: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",
+    fileName: "Qwen3-4B-Q4_K_M.gguf",
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "chatml",
@@ -260,8 +104,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     description: "Flagship Qwen3 model. Only for high-end devices with 12GB+ RAM.",
     size: "5.03 GB",
     sizeBytes: 5_030_000_000,
-    downloadUrl: "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/qwen3-8b-q4_k_m.gguf",
-    fileName: "qwen3-8b-q4_k_m.gguf",
+    downloadUrl: "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
+    fileName: "Qwen3-8B-Q4_K_M.gguf",
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "chatml",
