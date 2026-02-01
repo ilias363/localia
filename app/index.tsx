@@ -3,12 +3,15 @@ import { useRef, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useShallow } from "zustand/shallow";
 
 import { ChatHeader, ChatInput, EmptyState, MessageBubble } from "@/components/chat";
 import { SideDrawer } from "@/components/side-drawer";
 import { ThemedView } from "@/components/themed-view";
 import { useChat } from "@/hooks/use-chat";
+import { llmService } from "@/services/llm";
 import { useConversationStore } from "@/stores/conversation-store";
+import { useModelStore } from "@/stores/model-store";
 import type { Message } from "@/types";
 
 export default function ChatScreen() {
@@ -26,12 +29,40 @@ export default function ChatScreen() {
   const setActiveConversation = useConversationStore(state => state.setActiveConversation);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
+  // Get loaded models for the switcher
+  const { models, loadedModels, selectedModelId } = useModelStore(
+    useShallow(state => ({
+      models: state.models,
+      loadedModels: state.loadedModels,
+      selectedModelId: state.selectedModelId,
+    })),
+  );
+  const { selectModel } = useModelStore.getState();
+
+  // Build loaded model options for the header
+  const loadedModelOptions = Object.keys(loadedModels)
+    .map(modelId => {
+      const model = models.find(m => m.id === modelId);
+      if (!model) return null;
+      return {
+        model,
+        isSelected: modelId === selectedModelId,
+      };
+    })
+    .filter(Boolean) as { model: (typeof models)[0]; isSelected: boolean }[];
+
   const handleMenuPress = () => {
     setDrawerVisible(true);
   };
 
   const handleNewChatPress = () => {
     setActiveConversation(null);
+  };
+
+  const handleSelectModel = (modelId: string) => {
+    // Update both LLM service and store
+    llmService.selectModel(modelId);
+    selectModel(modelId);
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -45,8 +76,10 @@ export default function ChatScreen() {
         <ChatHeader
           modelName={activeModel?.name ?? "No Model"}
           isConnected={isModelReady}
+          loadedModels={loadedModelOptions}
           onMenuPress={handleMenuPress}
           onNewChatPress={handleNewChatPress}
+          onSelectModel={handleSelectModel}
         />
       </View>
 
@@ -72,7 +105,6 @@ export default function ChatScreen() {
           disabled={isGenerating}
           isGenerating={isGenerating}
           modelLoaded={isModelReady}
-          bottomInset={insets.bottom}
         />
       </KeyboardAvoidingView>
 
