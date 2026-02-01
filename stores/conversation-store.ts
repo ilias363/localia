@@ -207,13 +207,13 @@ export const useConversationStore = create<ConversationStore>()(
         }),
 
         // Deep merge persisted state with current state
+        // Note: activeConversationId is NOT restored - start with new chat on app launch
         merge: (persistedState, currentState) => {
           const persisted = persistedState as Partial<ConversationStoreState> | undefined;
           return {
             ...currentState,
             conversations: persisted?.conversations ?? currentState.conversations,
-            activeConversationId:
-              persisted?.activeConversationId ?? currentState.activeConversationId,
+            activeConversationId: null, // Always start with new conversation
           };
         },
 

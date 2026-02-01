@@ -56,7 +56,6 @@ class LLMService {
   ): Promise<void> {
     // Check if already loaded
     if (this.contexts.has(modelInfo.id)) {
-      console.log(`Model ${modelInfo.id} already loaded`);
       callbacks?.onComplete?.();
       return;
     }
@@ -95,7 +94,6 @@ class LLMService {
         this._selectedModelId = modelInfo.id;
       }
 
-      console.log(`Model ${modelInfo.id} loaded successfully (${this.contexts.size} total loaded)`);
       callbacks?.onComplete?.();
     } catch (error) {
       console.error(`Failed to load model ${modelInfo.id}:`, error);
@@ -127,8 +125,6 @@ class LLMService {
         const remainingIds = Array.from(this.contexts.keys());
         this._selectedModelId = remainingIds.length > 0 ? remainingIds[0] : null;
       }
-
-      console.log(`Model ${targetId} unloaded (${this.contexts.size} remaining)`);
     }
   }
 
@@ -140,7 +136,6 @@ class LLMService {
     }
     this.contexts.clear();
     this._selectedModelId = null;
-    console.log("All models unloaded");
   }
 
   selectModel(modelId: string): boolean {

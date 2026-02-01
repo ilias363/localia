@@ -272,9 +272,7 @@ export const useModelStore = create<ModelStore>()(
 
             return new Promise<void>((resolve, reject) => {
               task
-                .begin(({ expectedBytes }) => {
-                  console.log(`Starting download of ${model.name}: ${expectedBytes} bytes`);
-                })
+                .begin(() => {})
                 .progress(({ bytesDownloaded, bytesTotal }) => {
                   // Check if cancelled or paused during download
                   if (runtimeState.cancelledDownloads.has(modelId)) {
