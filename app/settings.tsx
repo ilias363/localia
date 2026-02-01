@@ -37,17 +37,19 @@ export default function SettingsScreen() {
   const { clearAllConversations } = useConversationStore.getState();
 
   // Consolidate model store subscriptions with useShallow
-  const { models, activeModelId, modelStates } = useModelStore(
+  const { models, selectedModelId, loadedModels, modelStates } = useModelStore(
     useShallow(state => ({
       models: state.models,
-      activeModelId: state.activeModelId,
+      selectedModelId: state.selectedModelId,
+      loadedModels: state.loadedModels,
       modelStates: state.modelStates,
     })),
   );
 
   // Derive computed values
-  const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
-  const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
+  const selectedModel = selectedModelId ? models.find(m => m.id === selectedModelId) : null;
+  const modelReady = selectedModelId ? modelStates[selectedModelId]?.status === "ready" : false;
+  const loadedModelCount = Object.keys(loadedModels).length;
 
   // Consolidate settings store subscriptions with useShallow
   const {
@@ -223,8 +225,8 @@ export default function SettingsScreen() {
           <SettingRow
             icon="cube-outline"
             iconColor={tintColor}
-            label={activeModel?.name ?? "No Model Selected"}
-            value={modelReady ? "Ready to use" : "Setup required"}
+            label={selectedModel?.name ?? "No Model Selected"}
+            value={modelReady ? `Ready (${loadedModelCount} loaded)` : "Setup required"}
             onPress={handleModelPress}
             showChevron
             statusDot={{

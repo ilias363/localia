@@ -30,12 +30,12 @@ export function useChat() {
   } = useConversationStore.getState();
 
   // Consolidate model store subscriptions with useShallow
-  const { models, modelStates, activeModelId, activeModelPath } = useModelStore(
+  const { models, modelStates, selectedModelId, loadedModels } = useModelStore(
     useShallow(state => ({
       models: state.models,
       modelStates: state.modelStates,
-      activeModelId: state.activeModelId,
-      activeModelPath: state.activeModelPath,
+      selectedModelId: state.selectedModelId,
+      loadedModels: state.loadedModels,
     })),
   );
 
@@ -55,15 +55,16 @@ export function useChat() {
   const activeConversation = activeConversationId
     ? conversations.find(c => c.id === activeConversationId)
     : null;
-  const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
-  const modelReady = activeModelId ? modelStates[activeModelId]?.status === "ready" : false;
+  const selectedModel = selectedModelId ? models.find(m => m.id === selectedModelId) : null;
+  const selectedModelPath = selectedModelId ? loadedModels[selectedModelId] : null;
+  const modelReady = selectedModelId ? modelStates[selectedModelId]?.status === "ready" : false;
   const messages = activeConversation?.messages ?? [];
 
   const sendMessage = async (content: string) => {
     if (isGenerating) return;
 
     // Check if model is ready
-    if (!modelReady || !activeModel || !activeModelPath) {
+    if (!modelReady || !selectedModel || !selectedModelPath) {
       console.warn("Cannot send message: No model loaded");
       return;
     }
@@ -91,8 +92,8 @@ export function useChat() {
     const assistantMessage = addMessage(conversationId, {
       role: "assistant",
       content: "",
-      modelId: activeModel.id,
-      modelName: activeModel.name,
+      modelId: selectedModel.id,
+      modelName: selectedModel.name,
     });
 
     setIsGenerating(true);
@@ -127,7 +128,7 @@ export function useChat() {
             setStreamingMessageId(null);
           },
         },
-        activeModel,
+        selectedModel,
         { temperature, topP, topK, minP, maxTokens, repeatPenalty },
       );
     } catch {
@@ -147,7 +148,7 @@ export function useChat() {
     messages,
     isGenerating,
     isModelReady: modelReady,
-    activeModel,
+    activeModel: selectedModel,
     streamingMessageId,
     sendMessage,
     stopGeneration,

@@ -28,7 +28,14 @@ type ListItem =
   | { type: "import-card" }
   | { type: "search-bar" }
   | { type: "downloaded-header"; count: number }
-  | { type: "model"; model: ModelInfo; state: ModelState; isActive: boolean; isLast: boolean }
+  | {
+      type: "model";
+      model: ModelInfo;
+      state: ModelState;
+      isSelected: boolean;
+      isLoaded: boolean;
+      isLast: boolean;
+    }
   | { type: "available-header"; count: number }
   | { type: "sort-options" }
   | { type: "empty-search"; query: string }
@@ -70,11 +77,12 @@ export default function ModelManagerScreen() {
   const { triggerMedium, triggerSuccess, triggerError } = useHaptics();
 
   // Consolidate store subscriptions for better performance
-  const { models, modelStates, activeModelId } = useModelStore(
+  const { models, modelStates, selectedModelId, loadedModels } = useModelStore(
     useShallow(state => ({
       models: state.models,
       modelStates: state.modelStates,
-      activeModelId: state.activeModelId,
+      selectedModelId: state.selectedModelId,
+      loadedModels: state.loadedModels,
     })),
   );
 
@@ -87,6 +95,8 @@ export default function ModelManagerScreen() {
     deleteModel,
     loadModel,
     unloadModel,
+    unloadAllModels,
+    selectModel,
     importModel,
     setModelError,
     setModelReady,
@@ -94,7 +104,7 @@ export default function ModelManagerScreen() {
   } = useModelStore.getState();
 
   // Derive active model from reactive state
-  const activeModel = activeModelId ? models.find(m => m.id === activeModelId) : null;
+  const loadedModelCount = Object.keys(loadedModels).length;
 
   const [isImporting, setIsImporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -152,7 +162,8 @@ export default function ModelManagerScreen() {
         type: "model",
         model,
         state: getModelState(model.id),
-        isActive: activeModel?.id === model.id,
+        isSelected: selectedModelId === model.id,
+        isLoaded: model.id in loadedModels,
         isLast: index === downloadedModels.length - 1,
       });
     });
@@ -166,7 +177,8 @@ export default function ModelManagerScreen() {
         type: "model",
         model,
         state: getModelState(model.id),
-        isActive: activeModel?.id === model.id,
+        isSelected: selectedModelId === model.id,
+        isLoaded: model.id in loadedModels,
         isLast: index === sortedAvailableModels.length - 1,
       });
     });
@@ -236,13 +248,16 @@ export default function ModelManagerScreen() {
           <ModelCard
             model={item.model}
             state={item.state}
-            isActive={item.isActive}
+            isSelected={item.isSelected}
+            isLoaded={item.isLoaded}
             onDownload={() => handleDownload(item.model.id)}
             onCancelDownload={() => handleCancelDownload(item.model.id)}
             onPauseDownload={() => handlePauseDownload(item.model.id)}
             onResumeDownload={() => handleResumeDownload(item.model.id)}
             onDelete={() => handleDelete(item.model.id)}
             onLoad={() => handleLoad(item.model.id)}
+            onUnload={() => handleUnload(item.model.id)}
+            onSelect={() => handleSelect(item.model.id)}
             isLast={item.isLast}
           />
         );
@@ -281,10 +296,10 @@ export default function ModelManagerScreen() {
   };
 
   const handleDelete = async (modelId: string) => {
-    // Unload if this is the active model
-    if (activeModel?.id === modelId) {
-      await llmService.unloadModel();
-      await unloadModel();
+    // Unload if this model is loaded
+    if (llmService.isModelLoadedById(modelId)) {
+      await llmService.unloadModel(modelId);
+      await unloadModel(modelId);
     }
     await deleteModel(modelId);
   };
@@ -320,6 +335,27 @@ export default function ModelManagerScreen() {
       setModelError(modelId, message);
       throw error;
     }
+  };
+
+  const handleUnload = async (modelId: string) => {
+    // Unload from LLM service
+    await llmService.unloadModel(modelId);
+    // Update store
+    await unloadModel(modelId);
+  };
+
+  const handleSelect = (modelId: string) => {
+    // Select in LLM service
+    llmService.selectModel(modelId);
+    // Update store
+    selectModel(modelId);
+  };
+
+  const handleUnloadAll = async () => {
+    // Unload all from LLM service
+    await llmService.releaseAll();
+    // Update store
+    await unloadAllModels();
   };
 
   const handlePickFile = async () => {
@@ -408,8 +444,9 @@ export default function ModelManagerScreen() {
         <ModelLibraryHeader
           totalModels={models.length}
           downloadedCount={downloadedCount}
-          activeCount={activeModel ? 1 : 0}
+          loadedCount={loadedModelCount}
           onBack={() => router.back()}
+          onUnloadAll={handleUnloadAll}
         />
       </View>
 

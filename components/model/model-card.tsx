@@ -12,26 +12,32 @@ import type { ModelInfo, ModelState } from "@/types";
 interface ModelCardProps {
   model: ModelInfo;
   state: ModelState;
-  isActive: boolean;
+  isSelected: boolean;
+  isLoaded: boolean;
   onDownload: () => Promise<void>;
   onCancelDownload: () => void;
   onPauseDownload: () => Promise<void>;
   onResumeDownload: () => Promise<void>;
   onDelete: () => Promise<void>;
   onLoad: () => Promise<void>;
+  onUnload: () => Promise<void>;
+  onSelect: () => void;
   isLast?: boolean;
 }
 
 export function ModelCard({
   model,
   state,
-  isActive,
+  isSelected,
+  isLoaded,
   onDownload,
   onCancelDownload,
   onPauseDownload,
   onResumeDownload,
   onDelete,
   onLoad,
+  onUnload,
+  onSelect,
   isLast = false,
 }: ModelCardProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -152,13 +158,34 @@ export function ModelCard({
     );
   };
 
+  const handleUnload = async () => {
+    triggerMedium();
+    setIsActionLoading(true);
+    try {
+      await onUnload();
+      triggerSuccess();
+    } catch (error) {
+      triggerError();
+      const message = error instanceof Error ? error.message : "Failed to unload model";
+      Alert.alert("Unload Error", message);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleSelect = () => {
+    triggerMedium();
+    onSelect();
+    triggerSuccess();
+  };
+
   const getStatusConfig = () => {
     switch (state.status) {
       case "ready":
         return {
           color: successColor,
           icon: "checkmark-circle" as const,
-          text: isActive ? "Active" : "Ready",
+          text: isSelected ? "Selected" : isLoaded ? "Loaded" : "Ready",
         };
       case "loading":
         return {
@@ -283,14 +310,51 @@ export function ModelCard({
         );
 
       case "ready":
-        if (isActive) {
+        if (isSelected) {
+          // Currently selected model - show active badge and unload option
           return (
-            <View style={[styles.activeBadge, { backgroundColor: successColor + "20" }]}>
-              <View style={[styles.activePulse, { backgroundColor: successColor }]} />
-              <ThemedText style={[styles.activeText, { color: successColor }]}>Active</ThemedText>
+            <View style={styles.actionButtonGroup}>
+              <View style={[styles.selectedBadge, { backgroundColor: successColor + "20" }]}>
+                <View style={[styles.activePulse, { backgroundColor: successColor }]} />
+                <ThemedText style={[styles.activeText, { color: successColor }]}>
+                  Selected
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[styles.secondaryActionButton, { backgroundColor: warningColor }]}
+                onPress={handleUnload}
+                disabled={isActionLoading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="power" size={18} color="#ffffff" />
+              </TouchableOpacity>
             </View>
           );
         }
+        if (isLoaded) {
+          // Loaded but not selected - show select and unload options
+          return (
+            <View style={styles.actionButtonGroup}>
+              <TouchableOpacity
+                style={[styles.secondaryActionButton, { backgroundColor: tintColor }]}
+                onPress={handleSelect}
+                disabled={isActionLoading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark" size={18} color="#ffffff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.secondaryActionButton, { backgroundColor: warningColor }]}
+                onPress={handleUnload}
+                disabled={isActionLoading}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="power" size={18} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          );
+        }
+        // Ready but not loaded - allow loading
         return (
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: tintColor }]}
@@ -298,7 +362,7 @@ export function ModelCard({
             disabled={isActionLoading}
             activeOpacity={0.8}
           >
-            <Ionicons name="swap-horizontal" size={20} color="#ffffff" />
+            <Ionicons name="play" size={20} color="#ffffff" />
           </TouchableOpacity>
         );
 
@@ -319,7 +383,7 @@ export function ModelCard({
     }
   };
 
-  const canDelete = state.status === "downloaded" || state.status === "ready";
+  const canDelete = state.status === "downloaded" || (state.status === "ready" && !isLoaded);
 
   // Extract short name (just quantization) for compact display
   const shortName = model.quantization;
@@ -327,9 +391,18 @@ export function ModelCard({
   return (
     <View style={[styles.card, { backgroundColor: cardBackground }, !isLast && styles.cardMargin]}>
       {/* Active indicator glow */}
-      {isActive && (
+      {isSelected && (
         <LinearGradient
           colors={[`${successColor}20`, `${successColor}00`]}
+          style={styles.activeGlow}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        />
+      )}
+      {/* Loaded indicator glow (lighter than selected) */}
+      {isLoaded && !isSelected && (
+        <LinearGradient
+          colors={[`${tintColor}15`, `${tintColor}00`]}
           style={styles.activeGlow}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -340,7 +413,11 @@ export function ModelCard({
       {(state.status === "downloading" || state.status === "paused") && (
         <View style={styles.progressContainer}>
           <Animated.View
-            style={[styles.progressBar, { backgroundColor: state.status === "paused" ? warningColor : tintColor }, progressStyle]}
+            style={[
+              styles.progressBar,
+              { backgroundColor: state.status === "paused" ? warningColor : tintColor },
+              progressStyle,
+            ]}
           />
         </View>
       )}
@@ -351,7 +428,12 @@ export function ModelCard({
           <ThemedText style={styles.modelName} numberOfLines={1}>
             {model.name}
           </ThemedText>
-          {isActive && <View style={[styles.activeIndicator, { backgroundColor: successColor }]} />}
+          {isSelected && (
+            <View style={[styles.activeIndicator, { backgroundColor: successColor }]} />
+          )}
+          {isLoaded && !isSelected && (
+            <View style={[styles.activeIndicator, { backgroundColor: tintColor }]} />
+          )}
         </View>
 
         {/* Compact Header Row */}
@@ -530,11 +612,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  activeBadge: {
+  selectedBadge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    height: 32,
+    paddingHorizontal: 8,
     borderRadius: 10,
     gap: 6,
   },

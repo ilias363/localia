@@ -1,5 +1,5 @@
 import { AVAILABLE_MODELS, CUSTOM_MODEL_PREFIX } from "@/constants/models";
-import type { ActiveModel, CustomModelInfo, ModelInfo, ModelState } from "@/types";
+import type { ActiveModel, CustomModelInfo, LoadedModel, ModelInfo, ModelState } from "@/types";
 import {
   completeHandler,
   createDownloadTask,
@@ -31,8 +31,9 @@ const runtimeState: RuntimeState = {
 interface ModelStoreState {
   models: ModelInfo[];
   modelStates: Record<string, ModelState>;
-  activeModelId: string | null;
-  activeModelPath: string | null;
+  // Multiple loaded models support (runtime only - cleared on app restart)
+  loadedModels: Record<string, string>; // modelId -> localPath
+  selectedModelId: string | null;
   initialized: boolean;
   _hasHydrated: boolean;
 }
@@ -46,6 +47,8 @@ interface ModelStoreActions {
   getActiveModel: () => ActiveModel | null;
   getModelState: (modelId: string) => ModelState;
   isModelReady: () => boolean;
+  getLoadedModels: () => LoadedModel[];
+  isModelLoaded: (modelId: string) => boolean;
 
   // State mutations
   updateModelState: (modelId: string, update: Partial<ModelState>) => void;
@@ -60,7 +63,9 @@ interface ModelStoreActions {
   cancelDownload: (modelId: string) => void;
   deleteModel: (modelId: string) => Promise<void>;
   loadModel: (modelId: string) => Promise<void>;
-  unloadModel: () => Promise<void>;
+  unloadModel: (modelId?: string) => Promise<void>;
+  unloadAllModels: () => Promise<void>;
+  selectModel: (modelId: string) => void;
   importModel: (customInfo: CustomModelInfo) => Promise<ModelInfo | null>;
 
   // Initialization
@@ -134,8 +139,8 @@ export const useModelStore = create<ModelStore>()(
         // Initial state
         models: [...AVAILABLE_MODELS],
         modelStates: {},
-        activeModelId: null,
-        activeModelPath: null,
+        loadedModels: {},
+        selectedModelId: null,
         initialized: false,
         _hasHydrated: false,
 
@@ -146,11 +151,13 @@ export const useModelStore = create<ModelStore>()(
 
         // Getters
         getActiveModel: () => {
-          const { activeModelId, activeModelPath, models } = get();
-          if (!activeModelId || !activeModelPath) return null;
-          const model = models.find(m => m.id === activeModelId);
+          const { selectedModelId, loadedModels, models } = get();
+          if (!selectedModelId) return null;
+          const localPath = loadedModels[selectedModelId];
+          if (!localPath) return null;
+          const model = models.find(m => m.id === selectedModelId);
           if (!model) return null;
-          return { info: model, localPath: activeModelPath };
+          return { info: model, localPath };
         },
 
         getModelState: (modelId: string) => {
@@ -159,9 +166,22 @@ export const useModelStore = create<ModelStore>()(
         },
 
         isModelReady: () => {
-          const { activeModelId, modelStates } = get();
-          if (!activeModelId) return false;
-          return modelStates[activeModelId]?.status === "ready";
+          const { selectedModelId, modelStates } = get();
+          if (!selectedModelId) return false;
+          return modelStates[selectedModelId]?.status === "ready";
+        },
+
+        getLoadedModels: () => {
+          const { loadedModels } = get();
+          return Object.entries(loadedModels).map(([modelId, localPath]) => ({
+            modelId,
+            localPath,
+          }));
+        },
+
+        isModelLoaded: (modelId: string) => {
+          const { loadedModels } = get();
+          return modelId in loadedModels;
         },
 
         // State mutations
@@ -185,19 +205,26 @@ export const useModelStore = create<ModelStore>()(
         },
 
         setModelReady: (modelId: string, localPath: string) => {
-          const { models, updateModelState } = get();
+          const { models, updateModelState, loadedModels, selectedModelId } = get();
           const model = models.find(m => m.id === modelId);
           if (model) {
             updateModelState(modelId, { status: "ready", localPath });
-            set({ activeModelId: modelId, activeModelPath: localPath });
+            // Add to loaded models
+            const newLoadedModels = { ...loadedModels, [modelId]: localPath };
+            // Auto-select if first model
+            const newSelectedModelId = selectedModelId ?? modelId;
+            set({
+              loadedModels: newLoadedModels,
+              selectedModelId: newSelectedModelId,
+            });
           }
         },
 
         setActiveModel: (model: ActiveModel | null) => {
           if (model) {
-            set({ activeModelId: model.info.id, activeModelPath: model.localPath });
+            set({ selectedModelId: model.info.id });
           } else {
-            set({ activeModelId: null, activeModelPath: null });
+            set({ selectedModelId: null });
           }
         },
 
@@ -437,7 +464,7 @@ export const useModelStore = create<ModelStore>()(
         },
 
         deleteModel: async (modelId: string) => {
-          const { getModelState, activeModelId } = get();
+          const { getModelState, loadedModels, unloadModel } = get();
           const state = getModelState(modelId);
 
           // Clean up any pending download state
@@ -448,9 +475,9 @@ export const useModelStore = create<ModelStore>()(
             task.stop().catch(() => { });
           }
 
-          // Unload if active
-          if (activeModelId === modelId) {
-            set({ activeModelId: null, activeModelPath: null });
+          // Unload if loaded
+          if (modelId in loadedModels) {
+            await unloadModel(modelId);
           }
 
           // Delete file if exists
@@ -503,15 +530,66 @@ export const useModelStore = create<ModelStore>()(
           // which will call setModelReady when done
         },
 
-        unloadModel: async () => {
-          const activeModel = get().getActiveModel();
-          if (activeModel) {
-            get().updateModelState(activeModel.info.id, {
-              status: "downloaded",
-              localPath: activeModel.localPath,
-            });
-            set({ activeModelId: null, activeModelPath: null });
+        unloadModel: async (modelId?: string) => {
+          const { loadedModels, selectedModelId, updateModelState } = get();
+
+          // If no modelId provided, unload the selected model (legacy behavior)
+          const targetId = modelId ?? selectedModelId;
+          if (!targetId) return;
+
+          const localPath = loadedModels[targetId];
+          if (!localPath) return;
+
+          // Update model state to downloaded
+          updateModelState(targetId, {
+            status: "downloaded",
+            localPath,
+          });
+
+          // Remove from loaded models
+          const newLoadedModels = { ...loadedModels };
+          delete newLoadedModels[targetId];
+
+          // If this was the selected model, select another or clear
+          let newSelectedModelId = selectedModelId;
+          if (selectedModelId === targetId) {
+            const remainingIds = Object.keys(newLoadedModels);
+            newSelectedModelId = remainingIds.length > 0 ? remainingIds[0] : null;
           }
+
+          set({
+            loadedModels: newLoadedModels,
+            selectedModelId: newSelectedModelId,
+          });
+        },
+
+        unloadAllModels: async () => {
+          const { loadedModels, updateModelState } = get();
+
+          // Update all loaded models to downloaded status
+          for (const [modelId, localPath] of Object.entries(loadedModels)) {
+            updateModelState(modelId, {
+              status: "downloaded",
+              localPath,
+            });
+          }
+
+          set({
+            loadedModels: {},
+            selectedModelId: null,
+          });
+        },
+
+        selectModel: (modelId: string) => {
+          const { loadedModels } = get();
+
+          // Can only select a loaded model
+          if (!(modelId in loadedModels)) {
+            console.warn(`Cannot select model ${modelId}: not loaded`);
+            return;
+          }
+
+          set({ selectedModelId: modelId });
         },
 
         importModel: async (customInfo: CustomModelInfo) => {
@@ -772,12 +850,10 @@ export const useModelStore = create<ModelStore>()(
         storage: createJSONStorage(() => zustandStorage),
 
         // Only persist data fields, not functions or transient state
+        // Note: loadedModels and selectedModelId are NOT persisted - contexts are gone on app restart
         partialize: state => ({
           models: state.models,
           modelStates: state.modelStates,
-          activeModelId: state.activeModelId,
-          activeModelPath: state.activeModelPath,
-          // Note: initialized is NOT persisted - we want to re-check files on each app start
         }),
 
         // Deep merge persisted state with current state
@@ -795,8 +871,9 @@ export const useModelStore = create<ModelStore>()(
             ...currentState,
             models: mergedModels,
             modelStates: persisted?.modelStates ?? currentState.modelStates,
-            activeModelId: persisted?.activeModelId ?? currentState.activeModelId,
-            activeModelPath: persisted?.activeModelPath ?? currentState.activeModelPath,
+            // loadedModels and selectedModelId start fresh - contexts are gone on app restart
+            loadedModels: {},
+            selectedModelId: null,
           };
         },
 
@@ -834,7 +911,8 @@ export const useModelStore = create<ModelStore>()(
 // Selector hooks for optimized re-renders
 export const useModels = () => useModelStore(state => state.models);
 export const useModelStates = () => useModelStore(state => state.modelStates);
-export const useActiveModelId = () => useModelStore(state => state.activeModelId);
+export const useSelectedModelId = () => useModelStore(state => state.selectedModelId);
+export const useLoadedModels = () => useModelStore(state => state.loadedModels);
 export const useModelHasHydrated = () => useModelStore(state => state._hasHydrated);
 
 // Legacy compatibility exports for easier migration

@@ -8,18 +8,26 @@ import { useAllThemeColors } from "@/hooks/use-theme-colors";
 interface ModelLibraryHeaderProps {
   totalModels: number;
   downloadedCount: number;
-  activeCount: number;
+  loadedCount: number;
   onBack: () => void;
+  onUnloadAll?: () => void;
 }
 
 export function ModelLibraryHeader({
   totalModels,
   downloadedCount,
-  activeCount,
+  loadedCount,
   onBack,
+  onUnloadAll,
 }: ModelLibraryHeaderProps) {
   const colors = useAllThemeColors();
-  const { tint: tintColor, text: iconColor, cardBackground, success: successColor } = colors;
+  const {
+    tint: tintColor,
+    text: iconColor,
+    cardBackground,
+    success: successColor,
+    warning: warningColor,
+  } = colors;
 
   return (
     <View style={styles.heroHeader}>
@@ -56,10 +64,22 @@ export function ModelLibraryHeader({
             <ThemedText style={styles.statLabel}>Downloaded</ThemedText>
           </View>
           <View style={[styles.statItem, { backgroundColor: cardBackground }]}>
-            <ThemedText style={[styles.statNumber, { color: tintColor }]}>{activeCount}</ThemedText>
-            <ThemedText style={styles.statLabel}>Active</ThemedText>
+            <ThemedText style={[styles.statNumber, { color: tintColor }]}>{loadedCount}</ThemedText>
+            <ThemedText style={styles.statLabel}>Loaded</ThemedText>
           </View>
         </View>
+
+        {/* Unload All Button - only show when models are loaded */}
+        {loadedCount > 0 && onUnloadAll && (
+          <TouchableOpacity
+            style={[styles.unloadAllButton, { backgroundColor: warningColor }]}
+            onPress={onUnloadAll}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="power" size={14} color="#ffffff" />
+            <ThemedText style={styles.unloadAllText}>Unload All</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -68,7 +88,7 @@ export function ModelLibraryHeader({
 const styles = StyleSheet.create({
   heroHeader: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   backButton: {
     width: 44,
@@ -129,5 +149,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.5,
     fontWeight: "500",
+  },
+  unloadAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  unloadAllText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

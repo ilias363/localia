@@ -1,24 +1,52 @@
 // LLM Service - integrates with llama.rn for local model inference
 
 import { CHAT_TEMPLATES, DEFAULT_GENERATION_PARAMS } from "@/constants/models";
-import type { GenerationParams, Message, ModelInfo, ModelLoadCallbacks, StreamCallbacks } from "@/types";
+import type {
+  GenerationParams,
+  Message,
+  ModelInfo,
+  ModelLoadCallbacks,
+  StreamCallbacks,
+} from "@/types";
 import { initLlama, releaseAllLlama, type LlamaContext } from "llama.rn";
 
 // Re-export types for convenience
 export type { GenerationParams, Message, ModelLoadCallbacks, StreamCallbacks } from "@/types";
 
-// Singleton LLM context manager
+// Loaded context info
+interface LoadedContext {
+  context: LlamaContext;
+  localPath: string;
+  modelInfo: ModelInfo;
+}
+
+// Multi-model LLM context manager
 class LLMService {
-  private context: LlamaContext | null = null;
-  private currentModelId: string | null = null;
-  private isLoading = false;
+  // Map of modelId -> context info for multi-model support
+  private contexts: Map<string, LoadedContext> = new Map();
+  // Currently selected model for generation
+  private _selectedModelId: string | null = null;
+  // Loading state per model
+  private loadingModels: Set<string> = new Set();
 
   get isModelLoaded(): boolean {
-    return this.context !== null;
+    return this.contexts.size > 0;
   }
 
-  get loadedModelId(): string | null {
-    return this.currentModelId;
+  get selectedModelId(): string | null {
+    return this._selectedModelId;
+  }
+
+  get loadedModelCount(): number {
+    return this.contexts.size;
+  }
+
+  getLoadedModelIds(): string[] {
+    return Array.from(this.contexts.keys());
+  }
+
+  isModelLoadedById(modelId: string): boolean {
+    return this.contexts.has(modelId);
   }
 
   async loadModel(
@@ -26,14 +54,18 @@ class LLMService {
     localPath: string,
     callbacks?: ModelLoadCallbacks,
   ): Promise<void> {
-    if (this.isLoading) {
-      throw new Error("Another model is currently loading");
+    // Check if already loaded
+    if (this.contexts.has(modelInfo.id)) {
+      console.log(`Model ${modelInfo.id} already loaded`);
+      callbacks?.onComplete?.();
+      return;
     }
 
-    // Release any existing context
-    await this.unloadModel();
+    if (this.loadingModels.has(modelInfo.id)) {
+      throw new Error(`Model ${modelInfo.id} is already loading`);
+    }
 
-    this.isLoading = true;
+    this.loadingModels.add(modelInfo.id);
 
     try {
       // Prepare model path - ensure it has proper URI format
@@ -42,7 +74,7 @@ class LLMService {
         modelPath = `file://${localPath}`;
       }
 
-      this.context = await initLlama(
+      const context = await initLlama(
         {
           model: modelPath,
           n_ctx: modelInfo.contextLength || DEFAULT_GENERATION_PARAMS.n_ctx,
@@ -52,36 +84,51 @@ class LLMService {
           use_mmap: DEFAULT_GENERATION_PARAMS.use_mmap,
         },
         (progress: number) => {
-          // progress is already an integer, no need to round it
           callbacks?.onProgress?.(progress);
         },
       );
 
-      this.currentModelId = modelInfo.id;
+      this.contexts.set(modelInfo.id, { context, localPath, modelInfo });
 
+      // Auto-select if first loaded model
+      if (!this._selectedModelId) {
+        this._selectedModelId = modelInfo.id;
+      }
+
+      console.log(`Model ${modelInfo.id} loaded successfully (${this.contexts.size} total loaded)`);
       callbacks?.onComplete?.();
     } catch (error) {
-      console.error("Failed to load model:", error);
-      this.context = null;
-      this.currentModelId = null;
+      console.error(`Failed to load model ${modelInfo.id}:`, error);
 
       const err = error instanceof Error ? error : new Error("Failed to load model");
       callbacks?.onError?.(err);
       throw err;
     } finally {
-      this.isLoading = false;
+      this.loadingModels.delete(modelInfo.id);
     }
   }
 
-  async unloadModel(): Promise<void> {
-    if (this.context) {
+  async unloadModel(modelId?: string): Promise<void> {
+    // If no modelId provided, unload the selected model (legacy behavior)
+    const targetId = modelId ?? this._selectedModelId;
+    if (!targetId) return;
+
+    const loaded = this.contexts.get(targetId);
+    if (loaded) {
       try {
-        await this.context.release();
+        await loaded.context.release();
       } catch (error) {
-        console.warn("Error releasing context:", error);
+        console.warn(`Error releasing context for ${targetId}:`, error);
       }
-      this.context = null;
-      this.currentModelId = null;
+      this.contexts.delete(targetId);
+
+      // If this was the selected model, select another or clear
+      if (this._selectedModelId === targetId) {
+        const remainingIds = Array.from(this.contexts.keys());
+        this._selectedModelId = remainingIds.length > 0 ? remainingIds[0] : null;
+      }
+
+      console.log(`Model ${targetId} unloaded (${this.contexts.size} remaining)`);
     }
   }
 
@@ -91,8 +138,17 @@ class LLMService {
     } catch (error) {
       console.warn("Error releasing all contexts:", error);
     }
-    this.context = null;
-    this.currentModelId = null;
+    this.contexts.clear();
+    this._selectedModelId = null;
+    console.log("All models unloaded");
+  }
+
+  selectModel(modelId: string): boolean {
+    if (this.contexts.has(modelId)) {
+      this._selectedModelId = modelId;
+      return true;
+    }
+    return false;
   }
 
   async generateResponse(
@@ -101,15 +157,22 @@ class LLMService {
     modelInfo?: ModelInfo,
     params?: GenerationParams,
   ): Promise<void> {
-    if (!this.context) {
+    // Use the specified model or fall back to selected model
+    const targetModelId = modelInfo?.id ?? this._selectedModelId;
+    const loaded = targetModelId ? this.contexts.get(targetModelId) : null;
+
+    if (!loaded) {
       callbacks.onError?.(new Error("No model loaded"));
       return;
     }
 
+    const context = loaded.context;
+    const effectiveModelInfo = modelInfo ?? loaded.modelInfo;
+
     try {
       // Build prompt using chat template
       const template =
-        CHAT_TEMPLATES[modelInfo?.chatTemplate as keyof typeof CHAT_TEMPLATES] ||
+        CHAT_TEMPLATES[effectiveModelInfo?.chatTemplate as keyof typeof CHAT_TEMPLATES] ||
         CHAT_TEMPLATES.chatml;
 
       let prompt = "";
@@ -142,7 +205,7 @@ class LLMService {
       const maxTokens = params?.maxTokens ?? DEFAULT_GENERATION_PARAMS.n_predict;
       const repeatPenalty = params?.repeatPenalty ?? DEFAULT_GENERATION_PARAMS.penalty_repeat;
 
-      const result = await this.context.completion(
+      const result = await context.completion(
         {
           prompt,
           n_predict: maxTokens,
@@ -160,13 +223,15 @@ class LLMService {
       );
 
       // Extract stats from completion result
-      const stats = result?.timings ? {
-        tokensGenerated: result.timings.predicted_n,
-        tokensPerSecond: result.timings.predicted_per_second,
-        generationTimeMs: result.timings.predicted_ms,
-        promptTokens: result.timings.prompt_n,
-        promptTimeMs: result.timings.prompt_ms,
-      } : undefined;
+      const stats = result?.timings
+        ? {
+          tokensGenerated: result.timings.predicted_n,
+          tokensPerSecond: result.timings.predicted_per_second,
+          generationTimeMs: result.timings.predicted_ms,
+          promptTokens: result.timings.prompt_n,
+          promptTimeMs: result.timings.prompt_ms,
+        }
+        : undefined;
 
       callbacks.onComplete(stats);
     } catch (error) {
@@ -176,26 +241,43 @@ class LLMService {
     }
   }
 
-  stopGeneration(): void {
-    if (this.context) {
-      try {
-        this.context.stopCompletion();
-      } catch (error) {
-        console.warn("Error stopping completion:", error);
+  stopGeneration(modelId?: string): void {
+    // Stop on specific model or all models if none specified
+    if (modelId) {
+      const loaded = this.contexts.get(modelId);
+      if (loaded) {
+        try {
+          loaded.context.stopCompletion();
+        } catch (error) {
+          console.warn(`Error stopping completion for ${modelId}:`, error);
+        }
+      }
+    } else {
+      // Stop on all loaded models
+      for (const [id, loaded] of this.contexts) {
+        try {
+          loaded.context.stopCompletion();
+        } catch (error) {
+          console.warn(`Error stopping completion for ${id}:`, error);
+        }
       }
     }
   }
 
-  getSystemInfo(): string | null {
-    return this.context?.systemInfo ?? null;
+  getSystemInfo(modelId?: string): string | null {
+    const targetId = modelId ?? this._selectedModelId;
+    const loaded = targetId ? this.contexts.get(targetId) : null;
+    return loaded?.context?.systemInfo ?? null;
   }
 
-  getModelInfo(): { desc?: string; size?: number; nParams?: number } | null {
-    if (!this.context?.model) return null;
+  getModelInfo(modelId?: string): { desc?: string; size?: number; nParams?: number } | null {
+    const targetId = modelId ?? this._selectedModelId;
+    const loaded = targetId ? this.contexts.get(targetId) : null;
+    if (!loaded?.context?.model) return null;
     return {
-      desc: this.context.model.desc,
-      size: this.context.model.size,
-      nParams: this.context.model.nParams,
+      desc: loaded.context.model.desc,
+      size: loaded.context.model.size,
+      nParams: loaded.context.model.nParams,
     };
   }
 }

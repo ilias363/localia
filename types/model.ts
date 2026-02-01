@@ -47,3 +47,9 @@ export interface ActiveModel {
   info: ModelInfo;
   localPath: string;
 }
+
+// Represents a model that is currently loaded in memory
+export interface LoadedModel {
+  modelId: string;
+  localPath: string;
+}
