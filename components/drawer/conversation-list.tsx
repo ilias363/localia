@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Alert, SectionList, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -11,6 +11,11 @@ interface ConversationListProps {
   activeConversationId: string | null;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+}
+
+interface Section {
+  title: string;
+  data: Conversation[];
 }
 
 function formatDate(timestamp: number): string {
@@ -25,15 +30,56 @@ function formatDate(timestamp: number): string {
   return date.toLocaleDateString();
 }
 
-function groupConversationsByDate(conversations: Conversation[]): Record<string, Conversation[]> {
-  return conversations.reduce(
-    (groups, conv) => {
-      const dateKey = formatDate(conv.updatedAt);
-      if (!groups[dateKey]) groups[dateKey] = [];
-      groups[dateKey].push(conv);
-      return groups;
-    },
-    {} as Record<string, Conversation[]>,
+function groupConversationsIntoSections(conversations: Conversation[]): Section[] {
+  const groups: Record<string, Conversation[]> = {};
+
+  for (const conv of conversations) {
+    const dateKey = formatDate(conv.updatedAt);
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(conv);
+  }
+
+  return Object.entries(groups).map(([title, data]) => ({ title, data }));
+}
+
+function ConversationItem({
+  conversation,
+  isActive,
+  textColor,
+  cardBackground,
+  onSelect,
+  onDelete,
+}: {
+  conversation: Conversation;
+  isActive: boolean;
+  textColor: string;
+  cardBackground: string;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.conversationItem, isActive && { backgroundColor: cardBackground }]}
+      onPress={() => onSelect(conversation.id)}
+      activeOpacity={0.7}
+    >
+      <Ionicons
+        name="chatbubble-outline"
+        size={16}
+        color={textColor}
+        style={styles.conversationIcon}
+      />
+      <ThemedText style={styles.conversationTitle} numberOfLines={1}>
+        {conversation.title}
+      </ThemedText>
+      <TouchableOpacity
+        onPress={() => onDelete(conversation.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={styles.deleteButton}
+      >
+        <Ionicons name="close" size={16} color={textColor} style={{ opacity: 0.5 }} />
+      </TouchableOpacity>
+    </TouchableOpacity>
   );
 }
 
@@ -46,7 +92,7 @@ export function ConversationList({
   const { triggerLight, triggerMedium, triggerWarning } = useHaptics();
   const { cardBackground, text: textColor } = useAllThemeColors();
 
-  const groupedConversations = groupConversationsByDate(conversations);
+  const sections = groupConversationsIntoSections(conversations);
 
   const handleSelectConversation = (id: string) => {
     triggerLight();
@@ -70,7 +116,7 @@ export function ConversationList({
 
   if (conversations.length === 0) {
     return (
-      <View style={styles.emptyState}>
+      <View style={styles.emptyStateContainer}>
         <Ionicons name="chatbubbles-outline" size={40} color={textColor} style={{ opacity: 0.2 }} />
         <ThemedText style={styles.emptyText}>No conversations yet</ThemedText>
       </View>
@@ -78,43 +124,30 @@ export function ConversationList({
   }
 
   return (
-    <ScrollView style={styles.conversationList} showsVerticalScrollIndicator={false}>
-      {Object.entries(groupedConversations).map(([dateGroup, convs]) => (
-        <View key={dateGroup}>
-          <ThemedText style={styles.dateHeader}>{dateGroup}</ThemedText>
-          {convs.map(conv => (
-            <TouchableOpacity
-              key={conv.id}
-              style={[
-                styles.conversationItem,
-                conv.id === activeConversationId && {
-                  backgroundColor: cardBackground,
-                },
-              ]}
-              onPress={() => handleSelectConversation(conv.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="chatbubble-outline"
-                size={16}
-                color={textColor}
-                style={styles.conversationIcon}
-              />
-              <ThemedText style={styles.conversationTitle} numberOfLines={1}>
-                {conv.title}
-              </ThemedText>
-              <TouchableOpacity
-                onPress={() => handleDeleteConversation(conv.id)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.deleteButton}
-              >
-                <Ionicons name="close" size={16} color={textColor} style={{ opacity: 0.5 }} />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ))}
-    </ScrollView>
+    <SectionList
+      sections={sections}
+      renderItem={({ item }) => (
+        <ConversationItem
+          conversation={item}
+          isActive={item.id === activeConversationId}
+          textColor={textColor}
+          cardBackground={cardBackground}
+          onSelect={handleSelectConversation}
+          onDelete={handleDeleteConversation}
+        />
+      )}
+      renderSectionHeader={({ section }) => (
+        <ThemedText style={styles.dateHeader}>{section.title}</ThemedText>
+      )}
+      keyExtractor={item => item.id}
+      style={styles.conversationList}
+      showsVerticalScrollIndicator={false}
+      stickySectionHeadersEnabled={false}
+      initialNumToRender={15}
+      maxToRenderPerBatch={10}
+      windowSize={5}
+      removeClippedSubviews={true}
+    />
   );
 }
 
@@ -151,10 +184,10 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 4,
   },
-  emptyState: {
+  emptyStateContainer: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
   },
   emptyText: {
     marginTop: 12,
