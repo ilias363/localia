@@ -30,6 +30,7 @@ export interface ModelInfo {
 export type ModelStatus =
   | "not-downloaded"
   | "downloading"
+  | "paused"
   | "downloaded"
   | "loading"
   | "ready"

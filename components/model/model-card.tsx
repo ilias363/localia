@@ -15,6 +15,8 @@ interface ModelCardProps {
   isActive: boolean;
   onDownload: () => Promise<void>;
   onCancelDownload: () => void;
+  onPauseDownload: () => Promise<void>;
+  onResumeDownload: () => Promise<void>;
   onDelete: () => Promise<void>;
   onLoad: () => Promise<void>;
   isLast?: boolean;
@@ -26,6 +28,8 @@ export function ModelCard({
   isActive,
   onDownload,
   onCancelDownload,
+  onPauseDownload,
+  onResumeDownload,
   onDelete,
   onLoad,
   isLast = false,
@@ -46,7 +50,7 @@ export function ModelCard({
 
   // Update progress animation in useEffect to avoid writing during render
   useEffect(() => {
-    if (state.status === "downloading") {
+    if (state.status === "downloading" || state.status === "paused") {
       progressWidth.value = withTiming(state.progress, { duration: 300 });
     } else if (state.status === "downloaded" || state.status === "ready") {
       progressWidth.value = withTiming(100, { duration: 300 });
@@ -98,6 +102,28 @@ export function ModelCard({
     onCancelDownload();
   };
 
+  const handlePauseDownload = async () => {
+    triggerMedium();
+    try {
+      await onPauseDownload();
+    } catch (error) {
+      triggerError();
+      const message = error instanceof Error ? error.message : "Failed to pause download";
+      Alert.alert("Pause Error", message);
+    }
+  };
+
+  const handleResumeDownload = async () => {
+    triggerMedium();
+    try {
+      await onResumeDownload();
+    } catch (error) {
+      triggerError();
+      const message = error instanceof Error ? error.message : "Failed to resume download";
+      Alert.alert("Resume Error", message);
+    }
+  };
+
   const handleDelete = () => {
     triggerHeavy();
     Alert.alert(
@@ -146,6 +172,12 @@ export function ModelCard({
           icon: "cloud-download" as const,
           text: state.progress > 0 ? `Downloading ${state.progress.toFixed(1)}%` : "Downloading...",
         };
+      case "paused":
+        return {
+          color: warningColor,
+          icon: "pause-circle" as const,
+          text: state.progress > 0 ? `Paused ${state.progress.toFixed(1)}%` : "Paused",
+        };
       case "downloaded":
         return {
           color: successColor,
@@ -193,13 +225,42 @@ export function ModelCard({
 
       case "downloading":
         return (
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: dangerColor }]}
-            onPress={handleCancelDownload}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="close" size={20} color="#ffffff" />
-          </TouchableOpacity>
+          <View style={styles.actionButtonGroup}>
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { backgroundColor: warningColor }]}
+              onPress={handlePauseDownload}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="pause" size={18} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { backgroundColor: dangerColor }]}
+              onPress={handleCancelDownload}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={18} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case "paused":
+        return (
+          <View style={styles.actionButtonGroup}>
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { backgroundColor: successColor }]}
+              onPress={handleResumeDownload}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="play" size={18} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { backgroundColor: dangerColor }]}
+              onPress={handleCancelDownload}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={18} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
         );
 
       case "downloaded":
@@ -276,10 +337,10 @@ export function ModelCard({
       )}
 
       {/* Download progress bar */}
-      {state.status === "downloading" && (
+      {(state.status === "downloading" || state.status === "paused") && (
         <View style={styles.progressContainer}>
           <Animated.View
-            style={[styles.progressBar, { backgroundColor: tintColor }, progressStyle]}
+            style={[styles.progressBar, { backgroundColor: state.status === "paused" ? warningColor : tintColor }, progressStyle]}
           />
         </View>
       )}
@@ -444,6 +505,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+  actionButtonGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  secondaryActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   deleteIconButton: {
     width: 36,

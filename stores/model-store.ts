@@ -3,6 +3,7 @@ import type { ActiveModel, CustomModelInfo, ModelInfo, ModelState } from "@/type
 import {
   completeHandler,
   createDownloadTask,
+  getExistingDownloadTasks,
   type DownloadTask,
 } from "@kesha-antonov/react-native-background-downloader";
 import { Directory, File, Paths } from "expo-file-system";
@@ -17,11 +18,13 @@ const STORE_VERSION = 1;
 interface RuntimeState {
   downloadTasks: Record<string, DownloadTask>;
   cancelledDownloads: Set<string>;
+  pausedDownloads: Set<string>;
 }
 
 const runtimeState: RuntimeState = {
   downloadTasks: {},
   cancelledDownloads: new Set(),
+  pausedDownloads: new Set(),
 };
 
 // Persisted state
@@ -52,6 +55,8 @@ interface ModelStoreActions {
 
   // Model operations
   downloadModel: (modelId: string) => Promise<void>;
+  pauseDownload: (modelId: string) => Promise<void>;
+  resumeDownload: (modelId: string) => Promise<void>;
   cancelDownload: (modelId: string) => void;
   deleteModel: (modelId: string) => Promise<void>;
   loadModel: (modelId: string) => Promise<void>;
@@ -244,8 +249,12 @@ export const useModelStore = create<ModelStore>()(
                   console.log(`Starting download of ${model.name}: ${expectedBytes} bytes`);
                 })
                 .progress(({ bytesDownloaded, bytesTotal }) => {
-                  // Check if cancelled during download
+                  // Check if cancelled or paused during download
                   if (runtimeState.cancelledDownloads.has(modelId)) {
+                    return;
+                  }
+                  // Don't update status if paused - just track progress silently
+                  if (runtimeState.pausedDownloads.has(modelId)) {
                     return;
                   }
                   const progress = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
@@ -257,6 +266,7 @@ export const useModelStore = create<ModelStore>()(
                 })
                 .done(({ bytesDownloaded, bytesTotal }) => {
                   delete runtimeState.downloadTasks[modelId];
+                  runtimeState.pausedDownloads.delete(modelId);
                   completeHandler(taskId);
 
                   // Check if download was cancelled while in progress
@@ -296,6 +306,7 @@ export const useModelStore = create<ModelStore>()(
                 })
                 .error(({ error, errorCode }) => {
                   delete runtimeState.downloadTasks[modelId];
+                  runtimeState.pausedDownloads.delete(modelId);
 
                   // Check if download was cancelled
                   if (runtimeState.cancelledDownloads.has(modelId)) {
@@ -348,6 +359,7 @@ export const useModelStore = create<ModelStore>()(
         cancelDownload: (modelId: string) => {
           // Update UI immediately
           runtimeState.cancelledDownloads.add(modelId);
+          runtimeState.pausedDownloads.delete(modelId);
           get().updateModelState(modelId, { status: "not-downloaded", progress: 0 });
 
           // Stop the download task (instant, non-blocking)
@@ -367,6 +379,60 @@ export const useModelStore = create<ModelStore>()(
                 if (modelFile.exists) modelFile.delete();
               } catch { }
             }, 500);
+          }
+        },
+
+        pauseDownload: async (modelId: string) => {
+          const task = runtimeState.downloadTasks[modelId];
+          if (!task) {
+            console.warn(`No active download task for ${modelId}`);
+            return;
+          }
+
+          try {
+            // Mark as paused and update UI immediately before calling pause()
+            runtimeState.pausedDownloads.add(modelId);
+            const currentState = get().getModelState(modelId);
+            get().updateModelState(modelId, {
+              status: "paused",
+              progress: currentState.progress,
+            });
+            await task.pause();
+          } catch (error) {
+            console.error(`Failed to pause download for ${modelId}:`, error);
+            // Revert state on error
+            runtimeState.pausedDownloads.delete(modelId);
+            const currentState = get().getModelState(modelId);
+            get().updateModelState(modelId, {
+              status: "downloading",
+              progress: currentState.progress,
+            });
+          }
+        },
+
+        resumeDownload: async (modelId: string) => {
+          const task = runtimeState.downloadTasks[modelId];
+          if (!task) {
+            // If no task exists, try to restart the download
+            runtimeState.pausedDownloads.delete(modelId);
+            await get().downloadModel(modelId);
+            return;
+          }
+
+          try {
+            runtimeState.pausedDownloads.delete(modelId);
+            const currentState = get().getModelState(modelId);
+            get().updateModelState(modelId, {
+              status: "downloading",
+              progress: currentState.progress,
+            });
+            await task.resume();
+          } catch (error) {
+            console.error(`Failed to resume download for ${modelId}:`, error);
+            get().updateModelState(modelId, {
+              status: "error",
+              error: error instanceof Error ? error.message : "Failed to resume download",
+            });
           }
         },
 
@@ -525,12 +591,18 @@ export const useModelStore = create<ModelStore>()(
 
         // Initialization
         initialize: () => {
-          const { initialized, models, updateModelState } = get();
+          const { initialized, models, updateModelState, modelStates } = get();
           if (initialized) return;
 
           ensureModelsDirectory();
 
+          // Check for existing downloaded models
           for (const model of models) {
+            const currentState = modelStates[model.id];
+            // Skip models that are in downloading/paused state - we'll handle those via getExistingDownloadTasks
+            if (currentState?.status === "downloading" || currentState?.status === "paused") {
+              continue;
+            }
             const localPath = checkModelExists(model.id, models);
             if (localPath) {
               updateModelState(model.id, {
@@ -540,6 +612,156 @@ export const useModelStore = create<ModelStore>()(
               });
             }
           }
+
+          // Re-attach to any background downloads that may have continued while app was closed
+          getExistingDownloadTasks()
+            .then(existingTasks => {
+              // Create a set of model IDs that have active tasks
+              const activeTaskModelIds = new Set<string>();
+
+              for (const task of existingTasks) {
+                // Extract modelId from taskId (format: "modelId-timestamp")
+                const taskIdParts = task.id.split("-");
+                // Remove the timestamp (last part) to get the modelId
+                taskIdParts.pop();
+                const modelId = taskIdParts.join("-");
+
+                const model = models.find(m => m.id === modelId);
+                if (!model) {
+                  // Unknown task, stop it
+                  task.stop().catch(() => { });
+                  continue;
+                }
+
+                activeTaskModelIds.add(modelId);
+
+                // Store the task reference
+                runtimeState.downloadTasks[modelId] = task;
+
+                // Check persisted state to determine if it was paused
+                const persistedState = modelStates[modelId];
+                const wasPaused = persistedState?.status === "paused";
+
+                if (wasPaused) {
+                  runtimeState.pausedDownloads.add(modelId);
+                }
+
+                // Re-attach callbacks
+                task
+                  .progress(({ bytesDownloaded, bytesTotal }) => {
+                    if (runtimeState.cancelledDownloads.has(modelId)) return;
+                    if (runtimeState.pausedDownloads.has(modelId)) return;
+
+                    const progress = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
+                    const roundedProgress = Math.round(progress * 10) / 10;
+                    updateModelState(modelId, {
+                      status: "downloading",
+                      progress: Math.min(roundedProgress, 99.9),
+                    });
+                  })
+                  .done(({ bytesDownloaded, bytesTotal }) => {
+                    delete runtimeState.downloadTasks[modelId];
+                    runtimeState.pausedDownloads.delete(modelId);
+                    completeHandler(task.id);
+
+                    if (runtimeState.cancelledDownloads.has(modelId)) {
+                      runtimeState.cancelledDownloads.delete(modelId);
+                      updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                      return;
+                    }
+
+                    const modelFile = getModelFilePath(model.fileName);
+                    updateModelState(modelId, {
+                      status: "downloaded",
+                      progress: 100,
+                      localPath: modelFile.uri,
+                    });
+                  })
+                  .error(({ error }) => {
+                    delete runtimeState.downloadTasks[modelId];
+                    runtimeState.pausedDownloads.delete(modelId);
+
+                    if (runtimeState.cancelledDownloads.has(modelId)) {
+                      runtimeState.cancelledDownloads.delete(modelId);
+                      updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                      return;
+                    }
+
+                    if (
+                      error.toLowerCase().includes("cancel") ||
+                      error.toLowerCase().includes("abort") ||
+                      error.toLowerCase().includes("stop")
+                    ) {
+                      updateModelState(modelId, { status: "not-downloaded", progress: 0 });
+                      return;
+                    }
+
+                    updateModelState(modelId, { status: "error", error });
+                  });
+
+                // Update initial UI state based on whether it was paused
+                if (wasPaused) {
+                  updateModelState(modelId, {
+                    status: "paused",
+                    progress: persistedState?.progress ?? 0,
+                  });
+                } else {
+                  updateModelState(modelId, {
+                    status: "downloading",
+                    progress: persistedState?.progress ?? 0,
+                  });
+                }
+              }
+
+              // Clean up stale "downloading"/"paused" states for models without active tasks
+              for (const modelId of Object.keys(modelStates)) {
+                const state = modelStates[modelId];
+                if (
+                  (state.status === "downloading" || state.status === "paused") &&
+                  !activeTaskModelIds.has(modelId)
+                ) {
+                  // No active task for this model - check if file is complete
+                  const localPath = checkModelExists(modelId, models);
+                  if (localPath) {
+                    updateModelState(modelId, {
+                      status: "downloaded",
+                      progress: 100,
+                      localPath,
+                    });
+                  } else {
+                    // No task and incomplete file - reset to not-downloaded
+                    updateModelState(modelId, {
+                      status: "not-downloaded",
+                      progress: 0,
+                      localPath: undefined,
+                    });
+                  }
+                }
+              }
+            })
+            .catch(error => {
+              console.error("Failed to re-attach to existing downloads:", error);
+              // On error, clean up all stale downloading/paused states
+              for (const modelId of Object.keys(modelStates)) {
+                const state = modelStates[modelId];
+                if (state.status === "downloading" || state.status === "paused") {
+                  const localPath = checkModelExists(modelId, models);
+                  if (localPath) {
+                    updateModelState(modelId, {
+                      status: "downloaded",
+                      progress: 100,
+                      localPath,
+                    });
+                  } else {
+                    updateModelState(modelId, {
+                      status: "not-downloaded",
+                      progress: 0,
+                      localPath: undefined,
+                    });
+                  }
+                }
+              }
+            });
 
           set({ initialized: true });
         },

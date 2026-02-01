@@ -82,6 +82,8 @@ export default function ModelManagerScreen() {
   const {
     downloadModel,
     cancelDownload,
+    pauseDownload,
+    resumeDownload,
     deleteModel,
     loadModel,
     unloadModel,
@@ -126,6 +128,7 @@ export default function ModelManagerScreen() {
     return (
       state.status === "not-downloaded" ||
       state.status === "downloading" ||
+      state.status === "paused" ||
       state.status === "error"
     );
   });
@@ -236,6 +239,8 @@ export default function ModelManagerScreen() {
             isActive={item.isActive}
             onDownload={() => handleDownload(item.model.id)}
             onCancelDownload={() => handleCancelDownload(item.model.id)}
+            onPauseDownload={() => handlePauseDownload(item.model.id)}
+            onResumeDownload={() => handleResumeDownload(item.model.id)}
             onDelete={() => handleDelete(item.model.id)}
             onLoad={() => handleLoad(item.model.id)}
             isLast={item.isLast}
@@ -265,6 +270,14 @@ export default function ModelManagerScreen() {
 
   const handleCancelDownload = (modelId: string) => {
     cancelDownload(modelId);
+  };
+
+  const handlePauseDownload = async (modelId: string) => {
+    await pauseDownload(modelId);
+  };
+
+  const handleResumeDownload = async (modelId: string) => {
+    await resumeDownload(modelId);
   };
 
   const handleDelete = async (modelId: string) => {
