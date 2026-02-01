@@ -62,7 +62,7 @@ export function ChatInput({
         />
         {isGenerating ? (
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: dangerColor }]}
+            style={[styles.sendButton, styles.sendButtonActive, { backgroundColor: dangerColor }]}
             onPress={handleStop}
             activeOpacity={0.7}
           >
@@ -70,14 +70,19 @@ export function ChatInput({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: canSend ? tintColor : "transparent" }]}
+            style={[
+              styles.sendButton,
+              canSend
+                ? [styles.sendButtonActive, { backgroundColor: tintColor }]
+                : [styles.sendButtonDisabled, { borderColor: placeholderColor }],
+            ]}
             onPress={handleSend}
             disabled={!canSend}
             activeOpacity={0.7}
           >
             <Ionicons
               name="arrow-up"
-              size={20}
+              size={18}
               color={canSend ? userBubbleText : placeholderColor}
             />
           </TouchableOpacity>
@@ -115,5 +120,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
+  },
+  sendButtonActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sendButtonDisabled: {
+    borderWidth: 1.5,
+    opacity: 0.5,
   },
 });
