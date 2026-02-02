@@ -527,6 +527,7 @@ export const useModelStore = create<ModelStore>()(
               quantization: customInfo.quantization,
               contextLength: customInfo.contextLength,
               chatTemplate: customInfo.chatTemplate,
+              supportsThinking: false,
             };
 
             set(state => ({
