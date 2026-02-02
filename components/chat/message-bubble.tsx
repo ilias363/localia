@@ -61,7 +61,7 @@ export function MessageBubble({ message, isStreaming, isThinking }: MessageBubbl
             style={styles.thinkingRow}
           >
             <ThemedText style={[styles.thinkingIndicator, { color: tintColor }]}>
-              {isThinking ? "💭 Thinking" : "💡 Thought"}
+              {isThinking ? "🤔 Thinking..." : "💡 Thought"}
             </ThemedText>
             {!isThinking && message.thinking && (
               <ThemedText style={[styles.thinkingToggle, { color: tintColor }]}>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 4,
+    gap: 24,
     marginBottom: 4,
   },
   thinkingIndicator: {
