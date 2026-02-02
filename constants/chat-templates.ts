@@ -1,6 +1,11 @@
 // Chat templates for different model families
 
-export const CHAT_TEMPLATES = {
+import type { ChatTemplate, ThinkingTokens } from "@/types";
+
+// Re-export types for convenience
+export type { ChatTemplate, ThinkingTokens } from "@/types";
+
+export const CHAT_TEMPLATES: Record<string, ChatTemplate> = {
   // ChatML format (used by TinyLlama, Qwen, SmolLM2, and many other models)
   chatml: {
     systemPrefix: "<|im_start|>system\n",
@@ -41,12 +46,33 @@ export const CHAT_TEMPLATES = {
     assistantSuffix: "<end_of_turn>\n",
     stopTokens: ["<end_of_turn>", "<start_of_turn>"],
   },
-} as const;
+  // Qwen3 with thinking support (uses /think and /no_think modes)
+  qwen3_thinking: {
+    systemPrefix: "<|im_start|>system\n",
+    systemSuffix: "<|im_end|>\n",
+    userPrefix: "<|im_start|>user\n",
+    userSuffix: "<|im_end|>\n",
+    assistantPrefix: "<|im_start|>assistant\n",
+    assistantSuffix: "<|im_end|>\n",
+    stopTokens: ["<|im_end|>", "<|im_start|>"],
+    thinking: {
+      thinkingPrefix: "<think>",
+      thinkingSuffix: "</think>",
+    },
+  },
+};
 
 // Export supported chat template keys for UI
-export const SUPPORTED_CHAT_TEMPLATES = Object.keys(
-  CHAT_TEMPLATES,
-) as (keyof typeof CHAT_TEMPLATES)[];
+export const SUPPORTED_CHAT_TEMPLATES = Object.keys(CHAT_TEMPLATES);
 
-// Type for chat template keys
-export type ChatTemplateKey = keyof typeof CHAT_TEMPLATES;
+// Helper to check if a template supports thinking
+export function templateSupportsThinking(templateKey: string): boolean {
+  const template = CHAT_TEMPLATES[templateKey];
+  return !!template?.thinking;
+}
+
+// Get thinking tokens for a template (if supported)
+export function getThinkingTokens(templateKey: string): ThinkingTokens | null {
+  const template = CHAT_TEMPLATES[templateKey];
+  return template?.thinking ?? null;
+}

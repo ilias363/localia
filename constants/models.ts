@@ -6,7 +6,14 @@ import type { ModelInfo } from "@/types";
 export type { ModelInfo, ModelState, ModelStatus } from "@/types";
 
 // Re-export chat templates from separate module
-export { CHAT_TEMPLATES, SUPPORTED_CHAT_TEMPLATES, type ChatTemplateKey } from "./chat-templates";
+export {
+  CHAT_TEMPLATES,
+  getThinkingTokens,
+  SUPPORTED_CHAT_TEMPLATES,
+  templateSupportsThinking,
+  type ChatTemplate,
+  type ThinkingTokens
+} from "./chat-templates";
 
 // Default model parameters
 export const DEFAULT_GENERATION_PARAMS = {
@@ -43,6 +50,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 2048,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "tinyllama-1.1b-chat-q8_0",
@@ -57,6 +65,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 2048,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
 
   // Qwen3 Series - Latest generation with best performance
@@ -64,54 +73,58 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     id: "qwen3-0.6b-q8_0",
     name: "Qwen3 0.6B Q8_0",
     provider: "Qwen",
-    description: "Ultra-lightweight Qwen3 model. Perfect for low-end devices with limited RAM.",
+    description: "Ultra-lightweight Qwen3 with thinking mode. Perfect for low-end devices.",
     size: "639 MB",
     sizeBytes: 639_000_000,
     downloadUrl: "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf",
     fileName: "Qwen3-0.6B-Q8_0.gguf",
     quantization: "Q8_0",
     contextLength: 4096,
-    chatTemplate: "chatml",
+    chatTemplate: "qwen3_thinking",
+    supportsThinking: true,
   },
   {
     id: "qwen3-1.7b-q8_0",
     name: "Qwen3 1.7B Q8_0",
     provider: "Qwen",
     description:
-      "Recommended. Excellent balance of size and quality. Great for most mobile devices.",
+      "Recommended. Excellent balance with thinking mode. Great for most mobile devices.",
     size: "1.83 GB",
     sizeBytes: 1_830_000_000,
     downloadUrl: "https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf",
     fileName: "Qwen3-1.7B-Q8_0.gguf",
     quantization: "Q8_0",
     contextLength: 4096,
-    chatTemplate: "chatml",
+    chatTemplate: "qwen3_thinking",
+    supportsThinking: true,
   },
   {
     id: "qwen3-4b-q4km",
     name: "Qwen3 4B Q4_K_M",
     provider: "Qwen",
-    description: "High-quality Qwen3 model. Best for high-end devices with 8GB+ RAM.",
+    description: "High-quality Qwen3 with thinking mode. Best for devices with 8GB+ RAM.",
     size: "2.5 GB",
     sizeBytes: 2_500_000_000,
     downloadUrl: "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf",
     fileName: "Qwen3-4B-Q4_K_M.gguf",
     quantization: "Q4_K_M",
     contextLength: 4096,
-    chatTemplate: "chatml",
+    chatTemplate: "qwen3_thinking",
+    supportsThinking: true,
   },
   {
     id: "qwen3-8b-q4km",
     name: "Qwen3 8B Q4_K_M",
     provider: "Qwen",
-    description: "Flagship Qwen3 model. Only for high-end devices with 12GB+ RAM.",
+    description: "Flagship Qwen3 with thinking mode. Only for devices with 12GB+ RAM.",
     size: "5.03 GB",
     sizeBytes: 5_030_000_000,
     downloadUrl: "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf",
     fileName: "Qwen3-8B-Q4_K_M.gguf",
     quantization: "Q4_K_M",
     contextLength: 4096,
-    chatTemplate: "chatml",
+    chatTemplate: "qwen3_thinking",
+    supportsThinking: true,
   },
 
   // Qwen2.5 Series - Stable and well-tested
@@ -128,6 +141,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "qwen2.5-0.5b-instruct-q8_0",
@@ -142,6 +156,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 4096,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "qwen2.5-1.5b-instruct-q4km",
@@ -156,6 +171,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "qwen2.5-1.5b-instruct-q8_0",
@@ -170,6 +186,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 4096,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "qwen2.5-3b-instruct-q4km",
@@ -184,6 +201,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
 
   // SmolLM2 Series - Ultra-compact models by HuggingFace
@@ -201,6 +219,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 2048,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
   {
     id: "smollm2-1.7b-instruct-q4km",
@@ -215,6 +234,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 2048,
     chatTemplate: "chatml",
+    supportsThinking: false,
   },
 
   // Llama 3.2 Series - Meta's latest compact models
@@ -231,6 +251,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 4096,
     chatTemplate: "llama3",
+    supportsThinking: false,
   },
   {
     id: "llama-3.2-3b-instruct-q4km",
@@ -245,6 +266,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 8192,
     chatTemplate: "llama3",
+    supportsThinking: false,
   },
   {
     id: "llama-3.2-3b-instruct-q8_0",
@@ -259,6 +281,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 8192,
     chatTemplate: "llama3",
+    supportsThinking: false,
   },
 
   // Phi-3 Series - Microsoft's compact reasoning models
@@ -276,6 +299,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 4096,
     chatTemplate: "phi3",
+    supportsThinking: false,
   },
 
   // Gemma 3 Series - Google's latest multimodal models
@@ -292,6 +316,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q4_K_M",
     contextLength: 8192,
     chatTemplate: "gemma",
+    supportsThinking: false,
   },
   {
     id: "gemma-3-4b-it-q8_0",
@@ -307,5 +332,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quantization: "Q8_0",
     contextLength: 8192,
     chatTemplate: "gemma",
+    supportsThinking: false,
   },
 ];

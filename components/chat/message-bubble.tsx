@@ -2,8 +2,8 @@ import { ThemedText } from "@/components/themed-text";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import { useSettingsStore } from "@/stores/settings-store";
 import type { Message } from "@/types";
-import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -17,11 +17,13 @@ import Animated, {
 interface MessageBubbleProps {
   message: Message;
   isStreaming?: boolean;
+  isThinking?: boolean;
 }
 
-export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
+export function MessageBubble({ message, isStreaming, isThinking }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const statsForNerdsEnabled = useSettingsStore(s => s.statsForNerdsEnabled);
+  const [thinkingExpanded, setThinkingExpanded] = useState(false);
 
   const userBubbleColor = useThemeColor({}, "userBubble");
   const assistantBubbleColor = useThemeColor({}, "assistantBubble");
@@ -31,6 +33,8 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const subtleTextColor = useThemeColor({}, "icon");
 
   const showStats = statsForNerdsEnabled && !isUser && !isStreaming && message.stats;
+  const hasThinking = !isUser && (message.thinking || isThinking);
+  const hasContent = message.content.length > 0;
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
@@ -50,19 +54,55 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
           { backgroundColor: isUser ? userBubbleColor : assistantBubbleColor },
         ]}
       >
+        {/* Thinking indicator - simple inline version */}
+        {hasThinking && (
+          <Pressable
+            onPress={() => setThinkingExpanded(!thinkingExpanded)}
+            style={styles.thinkingRow}
+          >
+            <ThemedText style={[styles.thinkingIndicator, { color: tintColor }]}>
+              {isThinking ? "💭 Thinking" : "💡 Thought"}
+            </ThemedText>
+            {!isThinking && message.thinking && (
+              <ThemedText style={[styles.thinkingToggle, { color: tintColor }]}>
+                {thinkingExpanded ? "hide" : "show"}
+              </ThemedText>
+            )}
+          </Pressable>
+        )}
+
+        {/* Expanded thinking content */}
+        {thinkingExpanded && message.thinking && !isThinking && (
+          <View style={[styles.thinkingContent, { borderColor: subtleTextColor }]}>
+            <ThemedText style={[styles.thinkingText, { color: subtleTextColor }]}>
+              {message.thinking}
+            </ThemedText>
+          </View>
+        )}
+
+        {/* Streaming thinking content */}
+        {isThinking && message.thinking && (
+          <View style={[styles.thinkingContent, { borderColor: subtleTextColor }]}>
+            <ThemedText style={[styles.thinkingText, { color: subtleTextColor }]}>
+              {message.thinking}
+              <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
+            </ThemedText>
+          </View>
+        )}
+
         {/* Show animated dots when streaming with no content */}
-        {isStreaming && message.content.length === 0 ? (
+        {isStreaming && !hasContent && !isThinking ? (
           <StreamingDots color={tintColor} />
-        ) : (
+        ) : hasContent ? (
           <ThemedText
             style={[styles.messageText, { color: isUser ? userTextColor : assistantTextColor }]}
           >
-            {message.content}
+            {message.content.trimStart()}
             {isStreaming && (
               <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
             )}
           </ThemedText>
-        )}
+        ) : null}
       </View>
 
       {/* Metadata row - aligned based on message sender */}
@@ -212,5 +252,29 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  thinkingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 4,
+    marginBottom: 4,
+  },
+  thinkingIndicator: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  thinkingToggle: {
+    fontSize: 11,
+    opacity: 0.7,
+  },
+  thinkingContent: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    opacity: 0.85,
+  },
+  thinkingText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontStyle: "italic",
   },
 });

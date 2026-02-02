@@ -32,6 +32,7 @@ interface ConversationStoreActions {
   // Message management
   addMessage: (conversationId: string, message: Omit<Message, "id" | "timestamp">) => Message;
   updateMessage: (conversationId: string, messageId: string, content: string) => void;
+  updateMessageThinking: (conversationId: string, messageId: string, thinking: string) => void;
   updateMessageStats: (conversationId: string, messageId: string, stats: MessageStats) => void;
   deleteMessage: (conversationId: string, messageId: string) => void;
   clearMessages: (conversationId: string) => void;
@@ -146,6 +147,20 @@ export const useConversationStore = create<ConversationStore>()(
                 ? {
                   ...c,
                   messages: c.messages.map(m => (m.id === messageId ? { ...m, content } : m)),
+                  updatedAt: Date.now(),
+                }
+                : c,
+            ),
+          }));
+        },
+
+        updateMessageThinking: (conversationId: string, messageId: string, thinking: string) => {
+          set(state => ({
+            conversations: state.conversations.map(c =>
+              c.id === conversationId
+                ? {
+                  ...c,
+                  messages: c.messages.map(m => (m.id === messageId ? { ...m, thinking } : m)),
                   updatedAt: Date.now(),
                 }
                 : c,

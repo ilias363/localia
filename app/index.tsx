@@ -20,6 +20,7 @@ export default function ChatScreen() {
   const {
     messages,
     isGenerating,
+    isThinking,
     isModelReady,
     activeModel,
     streamingMessageId,
@@ -66,7 +67,11 @@ export default function ChatScreen() {
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
-    <MessageBubble message={item} isStreaming={item.id === streamingMessageId} />
+    <MessageBubble
+      message={item}
+      isStreaming={item.id === streamingMessageId}
+      isThinking={item.id === streamingMessageId && isThinking}
+    />
   );
 
   return (

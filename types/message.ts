@@ -4,6 +4,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  thinking?: string; // Reasoning/thinking content from models that support it
   timestamp: number; // Unix timestamp in milliseconds
   stats?: MessageStats; // Generation stats for assistant messages
   modelId?: string; // ID of the model that generated this message (for assistant messages)
@@ -21,6 +22,8 @@ export interface MessageStats {
 
 export interface StreamCallbacks {
   onToken: (token: string) => void;
+  onThinkingToken?: (token: string) => void; // Callback for thinking/reasoning tokens
+  onThinkingComplete?: () => void; // Called when thinking phase ends
   onComplete: (stats?: MessageStats) => void;
   onError?: (error: Error) => void;
 }

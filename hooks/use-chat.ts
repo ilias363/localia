@@ -9,8 +9,10 @@ import { useShallow } from "zustand/shallow";
 export function useChat() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
   const abortRef = useRef(false);
   const streamingContentRef = useRef("");
+  const streamingThinkingRef = useRef("");
 
   // Consolidate conversation store subscriptions with useShallow
   const { conversations, activeConversationId } = useConversationStore(
@@ -24,6 +26,7 @@ export function useChat() {
   const {
     addMessage,
     updateMessage,
+    updateMessageThinking,
     updateMessageStats,
     createConversation,
     updateConversationTitle,
@@ -98,8 +101,10 @@ export function useChat() {
 
     setIsGenerating(true);
     setStreamingMessageId(assistantMessage.id);
+    setIsThinking(false);
     abortRef.current = false;
     streamingContentRef.current = "";
+    streamingThinkingRef.current = "";
 
     try {
       await llmService.generateResponse(
@@ -110,12 +115,26 @@ export function useChat() {
             streamingContentRef.current += token;
             updateMessage(conversationId!, assistantMessage.id, streamingContentRef.current);
           },
+          onThinkingToken: token => {
+            if (abortRef.current) return;
+            if (!isThinking) setIsThinking(true);
+            streamingThinkingRef.current += token;
+            updateMessageThinking(
+              conversationId!,
+              assistantMessage.id,
+              streamingThinkingRef.current,
+            );
+          },
+          onThinkingComplete: () => {
+            setIsThinking(false);
+          },
           onComplete: stats => {
             if (stats) {
               updateMessageStats(conversationId!, assistantMessage.id, stats);
             }
             setIsGenerating(false);
             setStreamingMessageId(null);
+            setIsThinking(false);
           },
           onError: error => {
             console.error("Generation error:", error);
@@ -126,6 +145,7 @@ export function useChat() {
             );
             setIsGenerating(false);
             setStreamingMessageId(null);
+            setIsThinking(false);
           },
         },
         selectedModel,
@@ -147,6 +167,7 @@ export function useChat() {
   return {
     messages,
     isGenerating,
+    isThinking,
     isModelReady: modelReady,
     activeModel: selectedModel,
     streamingMessageId,

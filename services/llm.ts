@@ -1,6 +1,6 @@
 // LLM Service - integrates with llama.rn for local model inference
 
-import { CHAT_TEMPLATES, DEFAULT_GENERATION_PARAMS } from "@/constants/models";
+import { CHAT_TEMPLATES, DEFAULT_GENERATION_PARAMS, getThinkingTokens } from "@/constants/models";
 import type {
   GenerationParams,
   Message,
@@ -185,6 +185,9 @@ class LLMService {
         } else if (message.role === "user") {
           prompt += `${template.userPrefix}${message.content}${template.userSuffix}`;
         } else if (message.role === "assistant") {
+          // Note: We exclude thinking content from history per Qwen3 best practices
+          // "the historical model output should only include the final output part
+          // and does not need to include the thinking content"
           prompt += `${template.assistantPrefix}${message.content}${template.assistantSuffix}`;
         }
       }
@@ -200,6 +203,15 @@ class LLMService {
       const maxTokens = params?.maxTokens ?? DEFAULT_GENERATION_PARAMS.n_predict;
       const repeatPenalty = params?.repeatPenalty ?? DEFAULT_GENERATION_PARAMS.penalty_repeat;
 
+      // Get thinking tokens for this model's template
+      const thinkingTokens = getThinkingTokens(effectiveModelInfo?.chatTemplate ?? "chatml");
+      const supportsThinking = effectiveModelInfo.supportsThinking && thinkingTokens;
+
+      // State for tracking thinking vs response content
+      let isInThinkingMode = false;
+      let thinkingStarted = false;
+      let tokenBuffer = ""; // Buffer to detect thinking tokens
+
       const result = await context.completion(
         {
           prompt,
@@ -213,9 +225,77 @@ class LLMService {
           stop: [...template.stopTokens],
         },
         (data: { token: string }) => {
-          callbacks.onToken(data.token);
+          if (!supportsThinking) {
+            // No thinking support - pass through directly
+            callbacks.onToken(data.token);
+            return;
+          }
+
+          // Buffer tokens to detect thinking markers
+          tokenBuffer += data.token;
+
+          // Check for thinking start marker
+          if (!thinkingStarted && tokenBuffer.includes(thinkingTokens.thinkingPrefix)) {
+            thinkingStarted = true;
+            isInThinkingMode = true;
+            // Remove the thinking prefix from buffer and emit any content before it
+            const prefixIndex = tokenBuffer.indexOf(thinkingTokens.thinkingPrefix);
+            const beforePrefix = tokenBuffer.substring(0, prefixIndex);
+            if (beforePrefix) {
+              callbacks.onToken(beforePrefix);
+            }
+            // Keep any content after the prefix in buffer
+            tokenBuffer = tokenBuffer.substring(prefixIndex + thinkingTokens.thinkingPrefix.length);
+            return;
+          }
+
+          // Check for thinking end marker
+          if (isInThinkingMode && tokenBuffer.includes(thinkingTokens.thinkingSuffix)) {
+            isInThinkingMode = false;
+            // Emit thinking content before the suffix
+            const suffixIndex = tokenBuffer.indexOf(thinkingTokens.thinkingSuffix);
+            const thinkingContent = tokenBuffer.substring(0, suffixIndex);
+            if (thinkingContent) {
+              callbacks.onThinkingToken?.(thinkingContent);
+            }
+            callbacks.onThinkingComplete?.();
+            // Keep any content after the suffix and emit as regular content
+            tokenBuffer = tokenBuffer.substring(suffixIndex + thinkingTokens.thinkingSuffix.length);
+            if (tokenBuffer) {
+              callbacks.onToken(tokenBuffer);
+              tokenBuffer = "";
+            }
+            return;
+          }
+
+          // If buffer is long enough that we won't see a marker, emit content
+          const maxMarkerLength = Math.max(
+            thinkingTokens.thinkingPrefix.length,
+            thinkingTokens.thinkingSuffix.length,
+          );
+
+          if (tokenBuffer.length > maxMarkerLength) {
+            const safeContent = tokenBuffer.substring(0, tokenBuffer.length - maxMarkerLength);
+            tokenBuffer = tokenBuffer.substring(tokenBuffer.length - maxMarkerLength);
+
+            if (isInThinkingMode) {
+              callbacks.onThinkingToken?.(safeContent);
+            } else {
+              callbacks.onToken(safeContent);
+            }
+          }
         },
       );
+
+      // Flush any remaining buffer content
+      if (supportsThinking && tokenBuffer) {
+        if (isInThinkingMode) {
+          callbacks.onThinkingToken?.(tokenBuffer);
+          callbacks.onThinkingComplete?.();
+        } else {
+          callbacks.onToken(tokenBuffer);
+        }
+      }
 
       // Extract stats from completion result
       const stats = result?.timings

@@ -25,6 +25,7 @@ export interface ModelInfo {
   quantization: string;
   contextLength: number;
   chatTemplate: string; // Chat template format
+  supportsThinking: boolean; // Whether the model supports thinking/reasoning output
 }
 
 export type ModelStatus =
