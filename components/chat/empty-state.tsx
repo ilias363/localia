@@ -1,19 +1,29 @@
 import { ThemedText } from "@/components/themed-text";
-import { useThemeColor } from "@/hooks/use-theme-color";
-import { Ionicons } from "@expo/vector-icons";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
+
+// Import app icons
+const appIconLight = require("@/assets/icons/app-icon-light.png");
+const appIconDark = require("@/assets/icons/app-icon-dark.png");
 
 interface EmptyStateProps {
   modelLoaded?: boolean;
 }
 
 export function EmptyState({ modelLoaded = true }: EmptyStateProps) {
-  const iconColor = useThemeColor({}, "tint");
+  const colorScheme = useColorScheme();
+  const appIcon = colorScheme === "dark" ? appIconLight : appIconDark;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.iconContainer, { backgroundColor: iconColor + "20" }]}>
-        <Ionicons name="chatbubbles-outline" size={48} color={iconColor} />
+      <View style={[styles.iconContainer]}>
+        <Image
+          source={appIcon}
+          style={styles.appIcon}
+          contentFit="contain"
+          allowDownscaling={false}
+        />
       </View>
       <ThemedText style={styles.title}>Welcome to Localia</ThemedText>
       <ThemedText style={styles.subtitle}>
@@ -34,10 +44,15 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
+  },
+  appIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 16,
   },
   title: {
     fontSize: 24,
