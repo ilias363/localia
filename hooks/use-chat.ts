@@ -2,7 +2,8 @@ import { llmService } from "@/services/llm";
 import { useConversationStore } from "@/stores/conversation-store";
 import { useModelStore } from "@/stores/model-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { generateTitle } from "@/utils";
+import { createTokenBuffer, generateTitle } from "@/utils";
+import type { TokenBuffer } from "@/utils";
 import { useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
 
@@ -13,6 +14,10 @@ export function useChat() {
   const abortRef = useRef(false);
   const streamingContentRef = useRef("");
   const streamingThinkingRef = useRef("");
+  
+  // Token buffers for optimized UI updates
+  const contentBufferRef = useRef<TokenBuffer | null>(null);
+  const thinkingBufferRef = useRef<TokenBuffer | null>(null);
 
   // Consolidate conversation store subscriptions with useShallow
   const { conversations, activeConversationId } = useConversationStore(
@@ -106,29 +111,60 @@ export function useChat() {
     streamingContentRef.current = "";
     streamingThinkingRef.current = "";
 
+    // Initialize token buffers for this generation session
+    contentBufferRef.current = createTokenBuffer({
+      onFlush: (content) => {
+        streamingContentRef.current += content;
+        updateMessage(conversationId!, assistantMessage.id, streamingContentRef.current);
+      },
+      maxTokens: 4,
+      maxChars: 20,
+    });
+    
+    thinkingBufferRef.current = createTokenBuffer({
+      onFlush: (content) => {
+        streamingThinkingRef.current += content;
+        updateMessageThinking(
+          conversationId!,
+          assistantMessage.id,
+          streamingThinkingRef.current,
+        );
+      },
+      maxTokens: 4,
+      maxChars: 20,
+    });
+
+    contentBufferRef.current.start();
+    thinkingBufferRef.current.start();
+
     try {
       await llmService.generateResponse(
         [...messages, userMessage],
         {
           onToken: token => {
             if (abortRef.current) return;
-            streamingContentRef.current += token;
-            updateMessage(conversationId!, assistantMessage.id, streamingContentRef.current);
+            contentBufferRef.current?.add(token);
           },
           onThinkingToken: token => {
             if (abortRef.current) return;
             if (!isThinking) setIsThinking(true);
-            streamingThinkingRef.current += token;
-            updateMessageThinking(
-              conversationId!,
-              assistantMessage.id,
-              streamingThinkingRef.current,
-            );
+            thinkingBufferRef.current?.add(token);
           },
           onThinkingComplete: () => {
+            thinkingBufferRef.current?.flush();
             setIsThinking(false);
           },
           onComplete: stats => {
+            // Flush any remaining content
+            contentBufferRef.current?.flush();
+            thinkingBufferRef.current?.flush();
+            
+            // Cleanup buffers
+            contentBufferRef.current?.stop();
+            thinkingBufferRef.current?.stop();
+            contentBufferRef.current = null;
+            thinkingBufferRef.current = null;
+            
             if (stats) {
               updateMessageStats(conversationId!, assistantMessage.id, stats);
             }
@@ -138,6 +174,13 @@ export function useChat() {
           },
           onError: error => {
             console.error("Generation error:", error);
+            
+            // Cleanup buffers
+            contentBufferRef.current?.stop();
+            thinkingBufferRef.current?.stop();
+            contentBufferRef.current = null;
+            thinkingBufferRef.current = null;
+            
             updateMessage(
               conversationId!,
               assistantMessage.id,
@@ -152,6 +195,12 @@ export function useChat() {
         { temperature, topP, topK, minP, maxTokens, repeatPenalty },
       );
     } catch {
+      // Cleanup buffers on exception
+      contentBufferRef.current?.stop();
+      thinkingBufferRef.current?.stop();
+      contentBufferRef.current = null;
+      thinkingBufferRef.current = null;
+      
       setIsGenerating(false);
       setStreamingMessageId(null);
     }
@@ -159,6 +208,15 @@ export function useChat() {
 
   const stopGeneration = () => {
     abortRef.current = true;
+    
+    // Flush and cleanup buffers
+    contentBufferRef.current?.flush();
+    thinkingBufferRef.current?.flush();
+    contentBufferRef.current?.stop();
+    thinkingBufferRef.current?.stop();
+    contentBufferRef.current = null;
+    thinkingBufferRef.current = null;
+    
     llmService.stopGeneration();
     setIsGenerating(false);
     setStreamingMessageId(null);
