@@ -107,14 +107,8 @@ export function ChatHeader({
           style={styles.iconButton}
           onPress={handleNewChatPress}
           activeOpacity={0.7}
-          disabled={!hasLoadedModels}
         >
-          <Ionicons
-            name="create-outline"
-            size={24}
-            color={iconColor}
-            style={{ opacity: hasLoadedModels ? 1 : 0.3 }}
-          />
+          <Ionicons name="create-outline" size={24} color={iconColor} />
         </TouchableOpacity>
       </View>
 
