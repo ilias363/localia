@@ -1,136 +1,18 @@
 import { AVAILABLE_MODELS, CUSTOM_MODEL_PREFIX } from "@/constants/models";
-import type { ActiveModel, CustomModelInfo, LoadedModel, ModelInfo, ModelState } from "@/types";
+import type { ActiveModel, CustomModelInfo, ModelInfo, ModelState } from "@/types";
 import {
   completeHandler,
   createDownloadTask,
   getExistingDownloadTasks,
-  type DownloadTask,
 } from "@kesha-antonov/react-native-background-downloader";
-import { Directory, File, Paths } from "expo-file-system";
+import { File } from "expo-file-system";
 import { create } from "zustand";
 import { createJSONStorage, persist, subscribeWithSelector } from "zustand/middleware";
-import { zustandStorage } from "./mmkv";
-
-// Store version for migrations
-const STORE_VERSION = 1;
-
-// Non-persisted runtime state (download refs, loading states)
-interface RuntimeState {
-  downloadTasks: Record<string, DownloadTask>;
-  cancelledDownloads: Set<string>;
-  pausedDownloads: Set<string>;
-}
-
-const runtimeState: RuntimeState = {
-  downloadTasks: {},
-  cancelledDownloads: new Set(),
-  pausedDownloads: new Set(),
-};
-
-// Persisted state
-interface ModelStoreState {
-  models: ModelInfo[];
-  modelStates: Record<string, ModelState>;
-  // Multiple loaded models support (runtime only - cleared on app restart)
-  loadedModels: Record<string, string>; // modelId -> localPath
-  selectedModelId: string | null;
-  initialized: boolean;
-  _hasHydrated: boolean;
-}
-
-// Actions
-interface ModelStoreActions {
-  // Hydration
-  setHasHydrated: (state: boolean) => void;
-
-  // Getters
-  getActiveModel: () => ActiveModel | null;
-  getModelState: (modelId: string) => ModelState;
-  isModelReady: () => boolean;
-  getLoadedModels: () => LoadedModel[];
-  isModelLoaded: (modelId: string) => boolean;
-
-  // State mutations
-  updateModelState: (modelId: string, update: Partial<ModelState>) => void;
-  setModelError: (modelId: string, error: string) => void;
-  setModelReady: (modelId: string, localPath: string) => void;
-  setActiveModel: (model: ActiveModel | null) => void;
-
-  // Model operations
-  downloadModel: (modelId: string) => Promise<void>;
-  pauseDownload: (modelId: string) => Promise<void>;
-  resumeDownload: (modelId: string) => Promise<void>;
-  cancelDownload: (modelId: string) => void;
-  deleteModel: (modelId: string) => Promise<void>;
-  loadModel: (modelId: string) => Promise<void>;
-  unloadModel: (modelId?: string) => Promise<void>;
-  unloadAllModels: () => Promise<void>;
-  selectModel: (modelId: string) => void;
-  importModel: (customInfo: CustomModelInfo) => Promise<ModelInfo | null>;
-
-  // Initialization
-  initialize: () => void;
-}
-
-type ModelStore = ModelStoreState & ModelStoreActions;
-
-// Helper functions
-const getModelsDirectory = (): Directory => {
-  return new Directory(Paths.document, "models");
-};
-
-const ensureModelsDirectory = (): void => {
-  const dir = getModelsDirectory();
-  if (!dir.exists) {
-    dir.create();
-  }
-};
-
-const getModelFilePath = (fileName: string): File => {
-  const dir = getModelsDirectory();
-  return new File(dir, fileName);
-};
-
-const checkModelExists = (modelId: string, models: ModelInfo[]): string | null => {
-  const model = models.find(m => m.id === modelId);
-  if (!model) return null;
-
-  const filePath = getModelFilePath(model.fileName);
-  if (!filePath.exists) return null;
-
-  // Validate file size - must be at least 95% of expected size (allow some tolerance for metadata differences)
-  // If sizeBytes is 0 (custom model), skip size validation
-  if (model.sizeBytes > 0) {
-    try {
-      const fileSize = filePath.size ?? 0;
-      const minExpectedSize = model.sizeBytes * 0.95;
-      if (fileSize < minExpectedSize) {
-        // File is incomplete - delete it
-        console.warn(
-          `Model ${modelId} file is incomplete (${fileSize} < ${model.sizeBytes}). Deleting...`,
-        );
-        try {
-          filePath.delete();
-        } catch {
-          // Ignore delete errors
-        }
-        return null;
-      }
-    } catch {
-      // If we can't get file size, just check existence
-    }
-  }
-
-  return filePath.uri;
-};
-
-const formatBytes = (bytes: number): string => {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-};
+import { zustandStorage } from "../mmkv";
+import { checkModelExists, ensureModelsDirectory, formatBytes, getModelFilePath } from "./helpers";
+import { runtimeState } from "./runtime-state";
+import type { ModelStore, ModelStoreState } from "./types";
+import { STORE_VERSION } from "./types";
 
 export const useModelStore = create<ModelStore>()(
   subscribeWithSelector(
@@ -272,7 +154,7 @@ export const useModelStore = create<ModelStore>()(
 
             return new Promise<void>((resolve, reject) => {
               task
-                .begin(() => {})
+                .begin(() => { })
                 .progress(({ bytesDownloaded, bytesTotal }) => {
                   // Check if cancelled or paused during download
                   if (runtimeState.cancelledDownloads.has(modelId)) {
@@ -916,3 +798,7 @@ export const useModelHasHydrated = () => useModelStore(state => state._hasHydrat
 // Legacy compatibility exports for easier migration
 // These can be removed once all components are updated
 export const ModelProvider = ({ children }: { children: React.ReactNode }) => children;
+
+// Re-export types for convenience
+export type { ModelStore, ModelStoreActions, ModelStoreState } from "./types";
+

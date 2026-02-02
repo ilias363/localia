@@ -1,29 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useEffect } from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
-import { useHaptics } from "@/hooks/use-haptics";
 import { useAllThemeColors } from "@/hooks/use-theme-colors";
-import type { ModelInfo, ModelState } from "@/types";
 
-interface ModelCardProps {
-  model: ModelInfo;
-  state: ModelState;
-  isSelected: boolean;
-  isLoaded: boolean;
-  onDownload: () => Promise<void>;
-  onCancelDownload: () => void;
-  onPauseDownload: () => Promise<void>;
-  onResumeDownload: () => Promise<void>;
-  onDelete: () => Promise<void>;
-  onLoad: () => Promise<void>;
-  onUnload: () => Promise<void>;
-  onSelect: () => void;
-  isLast?: boolean;
-}
+import { styles } from "./styles";
+import type { ModelCardProps, StatusConfig } from "./types";
+import { useModelCardActions } from "./use-model-card-actions";
 
 export function ModelCard({
   model,
@@ -40,9 +26,6 @@ export function ModelCard({
   onSelect,
   isLast = false,
 }: ModelCardProps) {
-  const [isActionLoading, setIsActionLoading] = useState(false);
-  const { triggerMedium, triggerHeavy, triggerSuccess, triggerError } = useHaptics();
-
   // Get all colors at once to reduce redundant hook calls
   const colors = useAllThemeColors();
   const cardBackground = colors.cardBackground;
@@ -51,6 +34,28 @@ export function ModelCard({
   const warningColor = colors.warning;
   const dangerColor = colors.danger;
   const textColor = colors.text;
+
+  const {
+    isActionLoading,
+    handleDownload,
+    handleLoad,
+    handleCancelDownload,
+    handlePauseDownload,
+    handleResumeDownload,
+    handleDelete,
+    handleUnload,
+    handleSelect,
+  } = useModelCardActions({
+    model,
+    onDownload,
+    onCancelDownload,
+    onPauseDownload,
+    onResumeDownload,
+    onDelete,
+    onLoad,
+    onUnload,
+    onSelect,
+  });
 
   const progressWidth = useSharedValue(0);
 
@@ -69,158 +74,48 @@ export function ModelCard({
     width: `${progressWidth.value}%`,
   }));
 
-  const handleDownload = async () => {
-    triggerMedium();
-    try {
-      onDownload().catch(error => {
-        triggerError();
-        const message = error instanceof Error ? error.message : "Download failed";
-        if (!message.toLowerCase().includes("cancel")) {
-          Alert.alert("Download Error", message);
-        }
-      });
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Download failed";
-      if (!message.toLowerCase().includes("cancel")) {
-        Alert.alert("Download Error", message);
-      }
-    }
-  };
-
-  const handleLoad = async () => {
-    triggerMedium();
-    setIsActionLoading(true);
-    try {
-      await onLoad();
-      triggerSuccess();
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Failed to load model";
-      Alert.alert("Load Error", message);
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  const handleCancelDownload = () => {
-    triggerMedium();
-    onCancelDownload();
-  };
-
-  const handlePauseDownload = async () => {
-    triggerMedium();
-    try {
-      await onPauseDownload();
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Failed to pause download";
-      Alert.alert("Pause Error", message);
-    }
-  };
-
-  const handleResumeDownload = async () => {
-    triggerMedium();
-    try {
-      await onResumeDownload();
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Failed to resume download";
-      Alert.alert("Resume Error", message);
-    }
-  };
-
-  const handleDelete = () => {
-    triggerHeavy();
-    Alert.alert(
-      "Delete Model",
-      `Are you sure you want to delete "${model.name}"? You'll need to download it again.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsActionLoading(true);
-            try {
-              await onDelete();
-              triggerSuccess();
-            } catch (error) {
-              triggerError();
-              const message = error instanceof Error ? error.message : "Failed to delete model";
-              Alert.alert("Delete Error", message);
-            } finally {
-              setIsActionLoading(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleUnload = async () => {
-    triggerMedium();
-    setIsActionLoading(true);
-    try {
-      await onUnload();
-      triggerSuccess();
-    } catch (error) {
-      triggerError();
-      const message = error instanceof Error ? error.message : "Failed to unload model";
-      Alert.alert("Unload Error", message);
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  const handleSelect = () => {
-    triggerMedium();
-    onSelect();
-    triggerSuccess();
-  };
-
-  const getStatusConfig = () => {
+  const getStatusConfig = (): StatusConfig => {
     switch (state.status) {
       case "ready":
         return {
           color: successColor,
-          icon: "checkmark-circle" as const,
+          icon: "checkmark-circle",
           text: isSelected ? "Selected" : isLoaded ? "Loaded" : "Ready",
         };
       case "loading":
         return {
           color: warningColor,
-          icon: "hourglass-outline" as const,
+          icon: "hourglass-outline",
           text: state.progress > 0 ? `Loading ${state.progress.toFixed(1)}%` : "Loading...",
         };
       case "downloading":
         return {
           color: tintColor,
-          icon: "cloud-download" as const,
+          icon: "cloud-download",
           text: state.progress > 0 ? `Downloading ${state.progress.toFixed(1)}%` : "Downloading...",
         };
       case "paused":
         return {
           color: warningColor,
-          icon: "pause-circle" as const,
+          icon: "pause-circle",
           text: state.progress > 0 ? `Paused ${state.progress.toFixed(1)}%` : "Paused",
         };
       case "downloaded":
         return {
           color: successColor,
-          icon: "checkmark-done" as const,
+          icon: "checkmark-done",
           text: "Downloaded",
         };
       case "error":
         return {
           color: dangerColor,
-          icon: "alert-circle" as const,
+          icon: "alert-circle",
           text: "Error",
         };
       default:
         return {
           color: textColor,
-          icon: "cloud-outline" as const,
+          icon: "cloud-outline",
           text: "Not downloaded",
         };
     }
@@ -484,164 +379,3 @@ export function ModelCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 14,
-    overflow: "hidden",
-    position: "relative",
-  },
-  cardMargin: {
-    marginBottom: 10,
-  },
-  activeGlow: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-  },
-  progressContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: "rgba(0,0,0,0.1)",
-  },
-  progressBar: {
-    height: "100%",
-  },
-  content: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  modelName: {
-    fontSize: 15,
-    fontWeight: "600",
-    flex: 1,
-  },
-  activeIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginLeft: 6,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  leftSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 10,
-  },
-  quantBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  quantText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  infoColumn: {
-    flex: 1,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  sizeText: {
-    fontSize: 11,
-    opacity: 0.5,
-  },
-  primaryButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  actionButtonGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  secondaryActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  deleteIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  selectedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 32,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    gap: 6,
-  },
-  activePulse: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  activeText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  description: {
-    fontSize: 12,
-    opacity: 0.6,
-    lineHeight: 18,
-  },
-  providerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 6,
-  },
-  providerText: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
-});
