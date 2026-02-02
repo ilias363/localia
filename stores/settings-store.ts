@@ -35,7 +35,7 @@ type SettingsStore = SettingsStoreState & SettingsStoreActions;
 // Default values
 const DEFAULT_SETTINGS: Omit<SettingsStoreState, "_hasHydrated"> = {
   hapticEnabled: true,
-  statsForNerdsEnabled: false,
+  statsForNerdsEnabled: true,
   temperature: 0.7,
   topP: 0.95,
   topK: 40,
