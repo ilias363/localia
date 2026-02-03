@@ -1,17 +1,25 @@
-import { useThemeColor } from "@/hooks/use-theme-color";
+import { Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useHaptics } from "@/hooks/use-haptics";
-import { Fonts } from "@/constants/theme";
-import { StyleSheet, View, Text, Pressable } from "react-native";
-import Markdown from "react-native-markdown-display";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import * as Clipboard from "expo-clipboard";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Markdown from "react-native-markdown-display";
 
 interface MarkdownRendererProps {
   content: string;
   textColor: string;
+  isStreaming?: boolean;
 }
 
-export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) {
+// Streaming cursor character to append
+const STREAMING_CURSOR = "▎";
+
+export function MarkdownRenderer({
+  content,
+  textColor,
+  isStreaming = false,
+}: MarkdownRendererProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const { triggerSuccess } = useHaptics();
@@ -22,6 +30,9 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
   const subtleTextColor = useThemeColor({}, "icon");
 
   const codeTextColor = isDark ? "#e6edf3" : "#24292e";
+
+  // Append cursor to content when streaming
+  const displayContent = isStreaming ? content + STREAMING_CURSOR : content;
 
   const handleCopyCode = async (code: string) => {
     try {
@@ -206,13 +217,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
 
   // Custom rules to add copy functionality to code blocks
   const rules = {
-    fence: (
-      node: any,
-      _children: any,
-      _parent: any,
-      styles: any,
-      _inheritedStyles: any = {}
-    ) => {
+    fence: (node: any, _children: any, _parent: any, styles: any, _inheritedStyles: any = {}) => {
       const codeContent = node.content || "";
       const language = node.sourceInfo || "";
 
@@ -225,9 +230,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
               { backgroundColor: codeBackground, borderColor: codeBorder },
             ]}
           >
-            <Text
-              style={[componentStyles.codeLanguage, { color: subtleTextColor }]}
-            >
+            <Text style={[componentStyles.codeLanguage, { color: subtleTextColor }]}>
               {language || "code"}
             </Text>
             <Pressable
@@ -237,9 +240,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
                 pressed && componentStyles.copyButtonPressed,
               ]}
             >
-              <Text style={[componentStyles.copyButtonText, { color: tintColor }]}>
-                Copy
-              </Text>
+              <Text style={[componentStyles.copyButtonText, { color: tintColor }]}>Copy</Text>
             </Pressable>
           </View>
           {/* Code content */}
@@ -259,7 +260,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
       _children: any,
       _parent: any,
       styles: any,
-      _inheritedStyles: any = {}
+      _inheritedStyles: any = {},
     ) => {
       const codeContent = node.content || "";
 
@@ -271,11 +272,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
               { backgroundColor: codeBackground, borderColor: codeBorder },
             ]}
           >
-            <Text
-              style={[componentStyles.codeLanguage, { color: subtleTextColor }]}
-            >
-              code
-            </Text>
+            <Text style={[componentStyles.codeLanguage, { color: subtleTextColor }]}>code</Text>
             <Pressable
               onPress={() => handleCopyCode(codeContent)}
               style={({ pressed }) => [
@@ -283,9 +280,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
                 pressed && componentStyles.copyButtonPressed,
               ]}
             >
-              <Text style={[componentStyles.copyButtonText, { color: tintColor }]}>
-                Copy
-              </Text>
+              <Text style={[componentStyles.copyButtonText, { color: tintColor }]}>Copy</Text>
             </Pressable>
           </View>
           <Text
@@ -303,7 +298,7 @@ export function MarkdownRenderer({ content, textColor }: MarkdownRendererProps) 
 
   return (
     <Markdown style={markdownStyles} rules={rules}>
-      {content}
+      {displayContent}
     </Markdown>
   );
 }

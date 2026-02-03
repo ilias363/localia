@@ -96,9 +96,7 @@ export function MessageBubble({ message, isStreaming, isThinking }: MessageBubbl
           <StreamingDots color={tintColor} />
         ) : hasContent ? (
           isUser ? (
-            <ThemedText
-              style={[styles.messageText, { color: userTextColor }]}
-            >
+            <ThemedText style={[styles.messageText, { color: userTextColor }]}>
               {message.content.trimStart()}
             </ThemedText>
           ) : (
@@ -106,10 +104,8 @@ export function MessageBubble({ message, isStreaming, isThinking }: MessageBubbl
               <MarkdownRenderer
                 content={message.content.trimStart()}
                 textColor={assistantTextColor}
+                isStreaming={isStreaming}
               />
-              {isStreaming && (
-                <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
-              )}
             </View>
           )
         ) : null}
@@ -215,7 +211,7 @@ const styles = StyleSheet.create({
   },
   cursor: {
     fontWeight: "300",
-    fontSize: 18,
+    fontSize: 14,
   },
   metaRow: {
     flexDirection: "row",
