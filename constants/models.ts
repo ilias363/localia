@@ -18,7 +18,7 @@ export {
 // Default model parameters
 export const DEFAULT_GENERATION_PARAMS = {
   n_ctx: 2048,
-  n_predict: 512,
+  n_predict: -1,
   temperature: 0.7,
   top_k: 40,
   top_p: 0.95,

@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: Omit<SettingsStoreState, "_hasHydrated"> = {
   topP: 0.95,
   topK: 40,
   minP: 0.05,
-  maxTokens: 512,
+  maxTokens: -1,
   repeatPenalty: 1.1,
 };
 
@@ -82,7 +82,12 @@ export const useSettingsStore = create<SettingsStore>()(
       },
 
       setMaxTokens: (maxTokens: number) => {
-        set({ maxTokens: Math.max(1, Math.min(4096, maxTokens)) });
+        // -1 means unlimited, otherwise clamp to valid range
+        if (maxTokens === -1) {
+          set({ maxTokens: -1 });
+        } else {
+          set({ maxTokens: Math.max(1, Math.min(16384, maxTokens)) });
+        }
       },
 
       setRepeatPenalty: (repeatPenalty: number) => {

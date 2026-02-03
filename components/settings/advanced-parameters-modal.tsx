@@ -125,11 +125,11 @@ export function AdvancedParametersModal({
 
             <ParameterInput
               label="Max Tokens"
-              description="Maximum response length (1 - 4096)"
+              description="Maximum response length (-1 = unlimited)"
               value={values.maxTokens}
               onChangeText={text => updateValue("maxTokens", text)}
               keyboardType="number-pad"
-              placeholder="512"
+              placeholder="-1"
             />
 
             <ParameterInput
