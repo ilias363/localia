@@ -400,6 +400,7 @@ export default function ModelManagerScreen() {
                       quantization: existingModel.quantization,
                       contextLength: existingModel.contextLength,
                       chatTemplate: existingModel.chatTemplate,
+                      supportsThinking: existingModel.supportsThinking,
                       fileUri: asset.uri,
                       fileName: asset.name,
                       fileSize: asset.size,
