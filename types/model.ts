@@ -7,6 +7,7 @@ export interface CustomModelInfo {
   quantization: string;
   contextLength: number;
   chatTemplate: string;
+  supportsThinking: boolean;
   // File info for import
   fileUri: string;
   fileName: string;

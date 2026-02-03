@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatTemplateSelector, FileInfoCard, ImportActionButtons } from "@/components/import";
@@ -20,6 +20,7 @@ interface ImportFormState {
   quantization: string;
   contextLength: string;
   chatTemplate: string;
+  supportsThinking: boolean;
 }
 
 export default function ImportModelScreen() {
@@ -33,6 +34,8 @@ export default function ImportModelScreen() {
   const { triggerMedium, triggerSuccess, triggerError } = useHaptics();
 
   const iconColor = useThemeColor({}, "text");
+  const tintColor = useThemeColor({}, "tint");
+  const borderColor = useThemeColor({}, "border");
 
   const importModel = useModelStore(state => state.importModel);
 
@@ -44,6 +47,7 @@ export default function ImportModelScreen() {
     quantization: "Unknown",
     contextLength: "2048",
     chatTemplate: "",
+    supportsThinking: false,
   });
 
   const fileSize = params.fileSize ? parseInt(params.fileSize, 10) : undefined;
@@ -78,6 +82,7 @@ export default function ImportModelScreen() {
           quantization: form.quantization.trim() || "Unknown",
           contextLength: parseInt(form.contextLength, 10) || 2048,
           chatTemplate: form.chatTemplate,
+          supportsThinking: form.supportsThinking,
           fileUri: params.fileUri,
           fileName: params.fileName,
           fileSize,
@@ -180,6 +185,25 @@ export default function ImportModelScreen() {
           onSelect={template => updateForm("chatTemplate", template)}
         />
 
+        {/* Thinking Model Toggle */}
+        <View style={styles.formSection}>
+          <ThemedText style={styles.sectionTitle}>Model Capabilities</ThemedText>
+          <View style={[styles.toggleRow, { borderColor }]}>
+            <View style={styles.toggleInfo}>
+              <ThemedText style={styles.toggleLabel}>Supports Thinking</ThemedText>
+              <ThemedText style={styles.toggleDescription}>
+                Enable if this is a reasoning model that outputs thinking tokens (e.g., DeepSeek R1, QwQ)
+              </ThemedText>
+            </View>
+            <Switch
+              value={form.supportsThinking}
+              onValueChange={value => updateForm("supportsThinking", value)}
+              trackColor={{ false: borderColor, true: tintColor }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
         {/* Action Buttons */}
         <ImportActionButtons
           onCancel={handleCancel}
@@ -240,5 +264,27 @@ const styles = StyleSheet.create({
   },
   formRowHalf: {
     flex: 1,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  toggleDescription: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 2,
   },
 });
