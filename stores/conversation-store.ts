@@ -141,31 +141,55 @@ export const useConversationStore = create<ConversationStore>()(
         },
 
         updateMessage: (conversationId: string, messageId: string, content: string) => {
-          set(state => ({
-            conversations: state.conversations.map(c =>
-              c.id === conversationId
-                ? {
-                  ...c,
-                  messages: c.messages.map(m => (m.id === messageId ? { ...m, content } : m)),
-                  updatedAt: Date.now(),
-                }
-                : c,
-            ),
-          }));
+          const state = get();
+          const convIndex = state.conversations.findIndex(c => c.id === conversationId);
+          if (convIndex === -1) return;
+
+          const conv = state.conversations[convIndex];
+          const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+          if (msgIndex === -1) return;
+
+          // Only update if content actually changed
+          if (conv.messages[msgIndex].content === content) return;
+
+          // Create minimal updates
+          const updatedMessages = [...conv.messages];
+          updatedMessages[msgIndex] = { ...updatedMessages[msgIndex], content };
+
+          const updatedConversations = [...state.conversations];
+          updatedConversations[convIndex] = {
+            ...conv,
+            messages: updatedMessages,
+            updatedAt: Date.now(),
+          };
+
+          set({ conversations: updatedConversations });
         },
 
         updateMessageThinking: (conversationId: string, messageId: string, thinking: string) => {
-          set(state => ({
-            conversations: state.conversations.map(c =>
-              c.id === conversationId
-                ? {
-                  ...c,
-                  messages: c.messages.map(m => (m.id === messageId ? { ...m, thinking } : m)),
-                  updatedAt: Date.now(),
-                }
-                : c,
-            ),
-          }));
+          const state = get();
+          const convIndex = state.conversations.findIndex(c => c.id === conversationId);
+          if (convIndex === -1) return;
+
+          const conv = state.conversations[convIndex];
+          const msgIndex = conv.messages.findIndex(m => m.id === messageId);
+          if (msgIndex === -1) return;
+
+          // Only update if thinking actually changed
+          if (conv.messages[msgIndex].thinking === thinking) return;
+
+          // Create minimal updates
+          const updatedMessages = [...conv.messages];
+          updatedMessages[msgIndex] = { ...updatedMessages[msgIndex], thinking };
+
+          const updatedConversations = [...state.conversations];
+          updatedConversations[convIndex] = {
+            ...conv,
+            messages: updatedMessages,
+            updatedAt: Date.now(),
+          };
+
+          set({ conversations: updatedConversations });
         },
 
         updateMessageStats: (conversationId: string, messageId: string, stats: MessageStats) => {

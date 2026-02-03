@@ -19,6 +19,7 @@ export {
 export const DEFAULT_GENERATION_PARAMS = {
   n_ctx: 2048,
   n_predict: -1,
+  n_batch: 512, // Prompt batch size for faster processing
   temperature: 0.7,
   top_k: 40,
   top_p: 0.95,

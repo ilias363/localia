@@ -77,6 +77,7 @@ class LLMService {
         {
           model: modelPath,
           n_ctx: modelInfo.contextLength || DEFAULT_GENERATION_PARAMS.n_ctx,
+          n_batch: DEFAULT_GENERATION_PARAMS.n_batch,
           n_gpu_layers: DEFAULT_GENERATION_PARAMS.n_gpu_layers,
           n_threads: DEFAULT_GENERATION_PARAMS.n_threads,
           use_mlock: DEFAULT_GENERATION_PARAMS.use_mlock,
