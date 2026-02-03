@@ -22,6 +22,14 @@ export const Colors = {
     danger: "#ff4444",
     success: "#4caf50",
     warning: "#ff9800",
+    // Code syntax highlighting colors
+    codeBackground: "#f6f8fa",
+    codeText: "#24292e",
+    codeKeyword: "#d73a49",
+    codeString: "#032f62",
+    codeComment: "#6a737d",
+    codeFunction: "#6f42c1",
+    codeNumber: "#005cc5",
   },
   dark: {
     text: "#ECEDEE",
@@ -41,6 +49,14 @@ export const Colors = {
     danger: "#ff4444",
     success: "#4caf50",
     warning: "#ff9800",
+    // Code syntax highlighting colors
+    codeBackground: "#161b22",
+    codeText: "#e6edf3",
+    codeKeyword: "#ff7b72",
+    codeString: "#a5d6ff",
+    codeComment: "#8b949e",
+    codeFunction: "#d2a8ff",
+    codeNumber: "#79c0ff",
   },
 };
 

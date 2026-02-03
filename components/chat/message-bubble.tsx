@@ -13,6 +13,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+import { MarkdownRenderer } from "./markdown-renderer";
 
 interface MessageBubbleProps {
   message: Message;
@@ -94,14 +95,23 @@ export function MessageBubble({ message, isStreaming, isThinking }: MessageBubbl
         {isStreaming && !hasContent && !isThinking ? (
           <StreamingDots color={tintColor} />
         ) : hasContent ? (
-          <ThemedText
-            style={[styles.messageText, { color: isUser ? userTextColor : assistantTextColor }]}
-          >
-            {message.content.trimStart()}
-            {isStreaming && (
-              <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
-            )}
-          </ThemedText>
+          isUser ? (
+            <ThemedText
+              style={[styles.messageText, { color: userTextColor }]}
+            >
+              {message.content.trimStart()}
+            </ThemedText>
+          ) : (
+            <View style={styles.markdownContainer}>
+              <MarkdownRenderer
+                content={message.content.trimStart()}
+                textColor={assistantTextColor}
+              />
+              {isStreaming && (
+                <ThemedText style={[styles.cursor, { color: tintColor }]}>▎</ThemedText>
+              )}
+            </View>
+          )
         ) : null}
       </View>
 
@@ -276,5 +286,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontStyle: "italic",
+  },
+  markdownContainer: {
+    flexShrink: 1,
   },
 });
