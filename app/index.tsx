@@ -1,3 +1,4 @@
+import { BlurTargetView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
@@ -16,6 +17,7 @@ import type { Message } from "@/types";
 
 export default function ChatScreen() {
   const flatListRef = useRef<FlatList<Message>>(null);
+  const blurTargetRef = useRef<View | null>(null);
   const insets = useSafeAreaInsets();
   const {
     messages,
@@ -77,49 +79,60 @@ export default function ChatScreen() {
   return (
     <ThemedView style={styles.container}>
       <StatusBar style="auto" />
-      <View style={[styles.topSafeArea, { paddingTop: insets.top }]}>
-        <ChatHeader
-          modelName={activeModel?.name ?? "No Model"}
-          isConnected={isModelReady}
-          loadedModels={loadedModelOptions}
-          onMenuPress={handleMenuPress}
-          onNewChatPress={handleNewChatPress}
-          onSelectModel={handleSelectModel}
-        />
-      </View>
 
-      <KeyboardAvoidingView style={styles.chatContainer} behavior="padding">
-        {messages.length === 0 ? (
-          <EmptyState modelLoaded={isModelReady} />
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={item => item.id}
-            style={styles.messageList}
-            contentContainerStyle={styles.messageListContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+      <BlurTargetView ref={blurTargetRef} style={styles.screenContent}>
+        <View style={[styles.topSafeArea, { paddingTop: insets.top }]}>
+          <ChatHeader
+            modelName={activeModel?.name ?? "No Model"}
+            isConnected={isModelReady}
+            loadedModels={loadedModelOptions}
+            onMenuPress={handleMenuPress}
+            onNewChatPress={handleNewChatPress}
+            onSelectModel={handleSelectModel}
           />
-        )}
-        <ChatInput
-          onSend={sendMessage}
-          onStop={stopGeneration}
-          disabled={isGenerating}
-          isGenerating={isGenerating}
-          modelLoaded={isModelReady}
-        />
-      </KeyboardAvoidingView>
+        </View>
 
-      <SideDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} insets={insets} />
+        <KeyboardAvoidingView style={styles.chatContainer} behavior="padding">
+          {messages.length === 0 ? (
+            <EmptyState modelLoaded={isModelReady} />
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={item => item.id}
+              style={styles.messageList}
+              contentContainerStyle={styles.messageListContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            />
+          )}
+          <ChatInput
+            onSend={sendMessage}
+            onStop={stopGeneration}
+            disabled={isGenerating}
+            isGenerating={isGenerating}
+            modelLoaded={isModelReady}
+          />
+        </KeyboardAvoidingView>
+      </BlurTargetView>
+
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        insets={insets}
+        blurTarget={blurTargetRef}
+      />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  screenContent: {
     flex: 1,
   },
   topSafeArea: {},
