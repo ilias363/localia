@@ -14,7 +14,7 @@ type ColorName = keyof typeof Colors.light & keyof typeof Colors.dark;
 export function useThemeColors<T extends ColorName[]>(
   ...colorNames: T
 ): { [K in T[number]]: string } {
-  const theme = useColorScheme() ?? "light";
+  const theme = useColorScheme() === "dark" ? "dark" : "light";
   const colors = Colors[theme];
 
   const result = {} as { [K in T[number]]: string };
@@ -30,6 +30,6 @@ export function useThemeColors<T extends ColorName[]>(
  * Use this when you need multiple colors in a component.
  */
 export function useAllThemeColors() {
-  const theme = useColorScheme() ?? "light";
+  const theme = useColorScheme() === "dark" ? "dark" : "light";
   return Colors[theme];
 }
