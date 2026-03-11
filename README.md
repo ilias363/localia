@@ -41,6 +41,38 @@ A local AI chat application built with React Native and Expo. Run large language
 
 > Note: This app uses native modules such as `llama.rn`, so Expo Go is not supported.
 
+## GitHub Releases APK
+
+This project is configured to publish an Android APK to GitHub Releases with Expo Application Services (EAS).
+
+### 1. Create an Expo access token
+
+- Go to the Expo account settings page: https://expo.dev/accounts/ilias363/settings/access-tokens
+- Create a token with permission to run EAS builds
+
+### 2. Add the token to GitHub
+
+- In your GitHub repository, open **Settings > Secrets and variables > Actions**
+- Add a repository secret named `EXPO_TOKEN`
+
+### 3. Push a version tag
+
+The release workflow runs when you push a tag that starts with `v`.
+
+Example:
+
+```bash
+git tag v1.3.0
+git push origin v1.3.0
+```
+
+### 4. What happens automatically
+
+- GitHub Actions starts an EAS Android build using the `github-release` profile
+- EAS produces an installable APK
+- GitHub creates a Release for that tag
+- The APK is attached to the Release assets
+
 ## Usage
 
 1. Open the **Model Manager** from the side drawer
