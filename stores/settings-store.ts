@@ -86,7 +86,7 @@ export const useSettingsStore = create<SettingsStore>()(
         if (maxTokens === -1) {
           set({ maxTokens: -1 });
         } else {
-          set({ maxTokens: Math.max(1, Math.min(16384, maxTokens)) });
+          set({ maxTokens: Math.max(1, Math.min(4096, maxTokens)) });
         }
       },
 
