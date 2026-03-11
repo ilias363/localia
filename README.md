@@ -5,7 +5,7 @@ A local AI chat application built with React Native and Expo. Run large language
 ## Features
 
 - **100% Local Inference** - All AI processing happens on your device using [llama.rn](https://github.com/mybigday/llama.rn)
-- **Multiple Models** - Choose from various TinyLlama GGUF quantizations (Q2_K to Q8_0)
+- **Multiple Models** - Browse and run multiple bundled GGUF models including TinyLlama, Qwen, SmolLM2, and Llama
 - **Model Manager** - Download, import, and manage models with search and sort functionality
 - **Streaming Responses** - Real-time text generation with animated UI
 - **Conversation History** - Persistent chat storage with MMKV
@@ -28,20 +28,22 @@ A local AI chat application built with React Native and Expo. Run large language
    pnpm install
    ```
 
-2. Start the app
+2. Start the development server
 
    ```bash
-   pnpm expo start
+   pnpm start
    ```
 
-3. Run on your device/emulator:
+3. Run on your device/emulator with a development build:
    - Press `a` for Android
    - Press `i` for iOS
-   - Scan QR code with Expo Go
+   - Or run `pnpm android` / `pnpm ios`
+
+> Note: This app uses native modules such as `llama.rn`, so Expo Go is not supported.
 
 ## Usage
 
 1. Open the **Model Manager** from the side drawer
-2. Download a model (smaller quantizations like Q2_K are faster to download)
+2. Download a model (smaller quantizations like Q2_K are faster to download but less accurate)
 3. Tap the play button to load the model
 4. Return to chat and start conversing!
