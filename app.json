@@ -7,6 +7,10 @@
     "icon": "./assets/icons/app-icon-light.png",
     "scheme": "localia",
     "userInterfaceStyle": "automatic",
+    "updates": {
+      "url": "https://u.expo.dev/f612e7ef-e148-49bb-a729-eb79dda3cc70",
+      "enableBsdiffPatchSupport": true
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ilias363.localia",
