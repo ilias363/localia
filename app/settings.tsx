@@ -166,8 +166,8 @@ export default function SettingsScreen() {
       Alert.alert("Invalid Min-P", "Min-P must be between 0 and 1.");
       return;
     }
-    if (isNaN(newMaxTokens) || newMaxTokens < 1 || newMaxTokens > 4096) {
-      Alert.alert("Invalid Max Tokens", "Max tokens must be between 1 and 4096.");
+    if (isNaN(newMaxTokens) || (newMaxTokens !== -1 && (newMaxTokens < 1 || newMaxTokens > 4096))) {
+      Alert.alert("Invalid Max Tokens", "Max tokens must be -1 or between 1 and 4096.");
       return;
     }
     if (isNaN(newRepeatPenalty) || newRepeatPenalty < 1 || newRepeatPenalty > 2) {
@@ -192,7 +192,7 @@ export default function SettingsScreen() {
       topP: "0.95",
       topK: "40",
       minP: "0.05",
-      maxTokens: "512",
+      maxTokens: "-1",
       repeatPenalty: "1.1",
     });
   };

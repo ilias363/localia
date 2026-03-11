@@ -25,7 +25,7 @@ interface ParameterInputProps {
   description: string;
   value: string;
   onChangeText: (text: string) => void;
-  keyboardType: "decimal-pad" | "number-pad";
+  keyboardType: "decimal-pad" | "number-pad" | "numeric";
   placeholder: string;
 }
 
@@ -128,7 +128,7 @@ export function AdvancedParametersModal({
               description="Maximum response length (-1 = unlimited)"
               value={values.maxTokens}
               onChangeText={text => updateValue("maxTokens", text)}
-              keyboardType="number-pad"
+              keyboardType="numeric"
               placeholder="-1"
             />
 
