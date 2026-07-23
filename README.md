@@ -47,7 +47,7 @@ This project is configured to publish an Android APK to GitHub Releases with Exp
 
 ### 1. Create an Expo access token
 
-- Go to the Expo account settings page: https://expo.dev/accounts/ilias363/settings/access-tokens
+- Go to the Expo account settings page: https://expo.dev/accounts/your-username/settings/access-tokens
 - Create a token with permission to run EAS builds
 
 ### 2. Add the token to GitHub
